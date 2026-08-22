@@ -124,7 +124,6 @@ for idx, asset in enumerate(otc_pairs):
             add_log(f"🔄 Превключване на актив: {asset}")
             st.rerun()
 
-st.markdown(f"**Активен инструмент в момента:** `{st.session_state.selected_asset}`")
 st.write("")
 
 # --- МАТЕМАТИЧЕСКИ ИЗЧИСЛЕНИЯ И АНАЛИЗ ---
@@ -140,19 +139,21 @@ if ema_fast and ema_mid and ema_slow:
         decision_text = "КУПУВАЙ (CALL / HIGHER) 🟢 [ТЕНДЕНЦИЯ: НАГОРЕ]"
         decision_color = "#2ebd85"
         if st.session_state.is_running and (len(st.session_state.logs) == 0 or "CALL" not in st.session_state.logs[-1]):
-            add_log(f"🟢 СИГНАЛ ЗА ПЕЧАЛБА: CALL на цена {st.session_state.current_price}")
+            add_log(f"🟢 СИГНАЛ ЗА ПЕЧАЛБА: CALL на {st.session_state.selected_asset} при цена {st.session_state.current_price}")
     elif ema_fast < ema_mid < ema_slow:
         decision_text = "ПРОДАВАЙ (PUT / LOWER) 🔴 [ТЕНДЕНЦИЯ: НАДОЛУ]"
         decision_color = "#df294a"
         if st.session_state.is_running and (len(st.session_state.logs) == 0 or "PUT" not in st.session_state.logs[-1]):
-            add_log(f"🔴 СИГНАЛ ЗА ПЕЧАЛБА: PUT на цена {st.session_state.current_price}")
+            add_log(f"🔴 СИГНАЛ ЗА ПЕЧАЛБА: PUT на {st.session_state.selected_asset} при цена {st.session_state.current_price}")
     else:
         decision_text = "НЕ ТЪРГУВАЙ! ⚠️ (Странично движение / Флат)"
         decision_color = "#ffa500"
 
-# Блок 1: Голям визуален прозорец за РЕШЕНИЕТО
+# Блок 1: Голям визуален прозорец за РЕШЕНИЕТО (Включва и текущата валутна двойка)
 st.markdown(f"""
     <div style="background-color:#11141a; padding:25px; border-radius:10px; border-left: 10px solid {decision_color}; text-align:center;">
+        <h2 style="color:#aaaaaa; margin:0; font-size:14px; letter-spacing: 1px;">ТЕКУЩ АКТИВ ЗА ТЪРГОВИЯ: <span style="color:#ffffff; font-weight:bold;">{st.session_state.selected_asset}</span></h2>
+        <hr style="border: 0; border-top: 1px solid #2b303c; margin: 15px 0;">
         <h2 style="color:#aaaaaa; margin:0; font-size:16px; letter-spacing: 1px;">АКТИВЕН АНАЛИЗ ЗА ВХОД (РЕАЛНО ВРЕМЕ):</h2>
         <h1 style="color:{decision_color}; margin:15px 0 0 0; font-size:36px; font-weight:bold;">{decision_text}</h1>
     </div>
@@ -160,7 +161,7 @@ st.markdown(f"""
 
 st.write("")
 
-# --- ⏱️ НОВА СЕКЦИЯ: АВТОМАТИЧЕН БРОЯЧ (ТАЙМЕР) ⏱️ ---
+# --- ⏱️ СЕКЦИЯ: ИЗЧИСТЕН ЦИФРОВ ТАЙМЕР ЗА ВРЕМЕВИ РАМКИ ⏱️ ---
 timer_placeholder = st.empty()
 
 # Блок 2: Метрики (Цена, Проценти, Индикатори)
@@ -189,39 +190,42 @@ st.subheader("📝 Терминал в реално време")
 log_text = "\n".join(st.session_state.logs[::-1])
 st.text_area(label="", value=log_text, height=150, disabled=True)
 
-# --- АВТОМАТИЧНО ПРЕЗАРЕЖДАНЕ И ПЛАВЕН ТАЙМЕР ---
+# --- АВТОМАТИЧНО ПРЕЗАРЕЖДАНЕ И СИНХРОНИЗИРАН ТАЙМЕР ---
 if st.session_state.is_running:
-    # Определяне на общото време за изчакване спрямо фрейма
-    intervals = {"1 min": 1.0, "3 min": 3.0, "5 min": 5.0}
-    total_wait_time = intervals.get(selected_tf, 1.0)
+    # Преобразуване на времевата рамка в реални секунди (1 мин = 60 сек, 3 мин = 180 сек, 5 мин = 300 сек)
+    tf_to_seconds = {"1 min": 60, "3 min": 180, "5 min": 300}
+    total_seconds = tf_to_seconds.get(selected_tf, 60)
     
-    # Стъпка за опресняване на анимацията на таймера (в секунди)
-    time_step = 0.1
-    elapsed_time = 0.0
+    start_time = time.time()
     
-    # Луп, който движи прогрес бар-а и текста на таймера всяка десета от секундата
-    while elapsed_time < total_wait_time:
-        remaining = max(0.0, total_wait_time - elapsed_time)
-        progress_percentage = min(1.0, elapsed_time / total_wait_time)
+    # Луп за обратно броене на всяка секунда
+    while True:
+        elapsed = time.time() - start_time
+        remaining = total_seconds - int(elapsed)
+        
+        if remaining <= 0:
+            break
+            
+        # Форматиране на времето в стил MM:SS (без излишни милисекунди или десетични запетаи)
+        mins = remaining // 60
+        secs = remaining % 60
+        time_string = f"{mins:02d}:{secs:02d}"
         
         with timer_placeholder.container():
-            st.markdown(f"⏳ **Следващ пазарен анализ и презареждане след: {remaining:.1f} сек.**")
-            st.progress(progress_percentage)
+            st.markdown(f"⏱️ **Време до следващ анализ на свещта за {st.session_state.selected_asset}:** `{time_string}`")
             
-        time.sleep(time_step)
-        elapsed_time += time_step
+        time.sleep(1.0)
 
-    # След изтичане на таймера - Симулиране на нов пазарен тик
+    # След изтичане на пълното време на свещта - Симулиране на нов пазарен тик
     step = 0.03 if "JPY" in st.session_state.selected_asset else 0.0003
     change = random.choice([-step, -step/2, 0, step/2, step])
     st.session_state.current_price = round(st.session_state.current_price + change, 5)
     st.session_state.price_history.append(st.session_state.current_price)
     
-    # Изчистване на контейнера и рестарт на уеб страницата
+    # Презареждане и активиране на новия анализ
     timer_placeholder.empty()
     st.rerun()
 else:
-    # Ако ботът е спрян, показваме статично съобщение
-    timer_placeholder.info("Ботът е в готовност. Натиснете 'СТАРТИРАЙ БОТ' от менюто вляво, за да активирате таймера.")
+    timer_placeholder.info("Ботът е спрян. Изберете актив и натиснете 'СТАРТИРАЙ БОТ', за да стартирате анализа на времевата рамка.")
 
     st.rerun()
