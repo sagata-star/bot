@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 import random
+import pandas as pd
 
 # Настройка на уеб страницата
 st.set_page_config(
@@ -25,23 +26,22 @@ otc_pairs = [
     "EUR/GBP (OTC)", "USD/CAD (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)"
 ]
 
-# --- ОПТИМИЗИРАНО КЕШИРАНЕ ЗА ПО-БЪРЗО ЗАРЕЖДАНЕ ---
-@st.cache_data(ttl=600)  # Кешира данните за 10 минути, за да не забавя презареждането
-def generate_fresh_history(asset_name):
-    base_price = 145.25 if "JPY" in asset_name else 1.1234
-    history = []
-    # Намален брой исторически точки (само колкото са нужни за EMA 50) за светкавична математика
-    for _ in range(70):
-        step = 0.02 if "JPY" in asset_name else 0.0003
-        base_price += random.choice([-step, -step/2, step/2, step])
-        history.append(round(base_price, 5))
-    return history
-
 # --- ИНИЦИАЛИЗАЦИЯ НА СЕСИЙНИТЕ ПРОМЕНЛИВИ (SESSION STATE) ---
 if "is_running" not in st.session_state:
     st.session_state.is_running = False
 if "selected_asset" not in st.session_state:
     st.session_state.selected_asset = "EUR/USD (OTC)"
+
+# Функция за генериране на нова пазарна история при смяна на актива
+def generate_fresh_history(asset_name):
+    base_price = 145.25 if "JPY" in asset_name else 1.1234
+    history = []
+    for _ in range(150):
+        step = 0.02 if "JPY" in asset_name else 0.0003
+        base_price += random.choice([-step, -step/2, step/2, step])
+        history.append(round(base_price, 5))
+    return history
+
 if "price_history" not in st.session_state:
     st.session_state.price_history = generate_fresh_history(st.session_state.selected_asset)
 if "current_price" not in st.session_state:
@@ -51,7 +51,7 @@ if "start_price" not in st.session_state:
 if "logs" not in st.session_state:
     st.session_state.logs = []
 
-# --- ОПТИМИЗИРАНИ ФУНКЦИИ ЗА ИЗЧИСЛЕНИЕ ---
+# --- ФУНКЦИИ ЗА ИЗЧИСЛЕНИЕ ---
 def calculate_ema(prices, period):
     if len(prices) < period:
         return None
@@ -65,7 +65,7 @@ def calculate_ema(prices, period):
 def add_log(msg):
     timestamp = time.strftime("[%H:%M:%S] ")
     st.session_state.logs.append(timestamp + msg)
-    if len(st.session_state.logs) > 30:  # Намален лог буфер за пестене на памет
+    if len(st.session_state.logs) > 50:
         st.session_state.logs.pop(0)
 
 # --- СТРАНИЧЕН ПАНЕЛ (НАСТРОЙКИ ЗА УПРАВЛЕНИЕ) ---
@@ -86,7 +86,7 @@ slow_p = st.sidebar.number_input("Бавна EMA:", min_value=20, max_value=200,
 
 st.sidebar.markdown("---")
 
-# Бутони за Старт и Стоп
+# Бутони за Старт и Стоп в страничната лента
 if not st.session_state.is_running:
     if st.sidebar.button("🚀 СТАРТИРАЙ БОТ", use_container_width=True):
         if fast_p >= mid_p or mid_p >= slow_p:
@@ -178,18 +178,27 @@ with col2:
 with col3:
     st.metric(label=f"EMA ({fast_p}/{mid_p}/{slow_p})", value=f"{ema_fast} | {ema_mid} | {ema_slow}")
 
-# Блок 3: Терминал / Журнал
+# Блок 3: Интерактивна Трейдинг Графика
+st.subheader("📊 Пазарна графика в реално време")
+chart_data = pd.DataFrame({
+    'Цена': list(st.session_state.price_history)[-60:],
+})
+st.line_chart(chart_data, height=250)
+
+# Блок 4: Терминал / Журнал
 st.subheader("📝 Терминал в реално време")
 log_text = "\n".join(st.session_state.logs[::-1])
 st.text_area(label="", value=log_text, height=150, disabled=True)
 
 # --- АВТОМАТИЧНО ПРЕЗАРЕЖДАНЕ И СИНХРОНИЗИРАН ТАЙМЕР ---
 if st.session_state.is_running:
+    # Преобразуване на времевата рамка в реални секунди (1 мин = 60 сек, 3 мин = 180 сек, 5 мин = 300 сек)
     tf_to_seconds = {"1 min": 60, "3 min": 180, "5 min": 300}
     total_seconds = tf_to_seconds.get(selected_tf, 60)
     
     start_time = time.time()
     
+    # Луп за обратно броене на всяка секунда
     while True:
         elapsed = time.time() - start_time
         remaining = total_seconds - int(elapsed)
@@ -197,6 +206,7 @@ if st.session_state.is_running:
         if remaining <= 0:
             break
             
+        # Форматиране на времето в стил MM:SS (без излишни милисекунди или десетични запетаи)
         mins = remaining // 60
         secs = remaining % 60
         time_string = f"{mins:02d}:{secs:02d}"
@@ -206,17 +216,20 @@ if st.session_state.is_running:
             
         time.sleep(1.0)
 
-    # Симулиране на нов пазарен тик след изтичане на времето
+    # След изтичане на пълното време на свещта - Симулиране на нов пазарен тик
     step = 0.03 if "JPY" in st.session_state.selected_asset else 0.0003
     change = random.choice([-step, -step/2, 0, step/2, step])
     st.session_state.current_price = round(st.session_state.current_price + change, 5)
     st.session_state.price_history.append(st.session_state.current_price)
     
-    # Презареждане на уеб страницата
+    # Презареждане и активиране на новия анализ
     timer_placeholder.empty()
     st.rerun()
 else:
     timer_placeholder.info("Ботът е спрян. Изберете актив и натиснете 'СТАРТИРАЙ БОТ', за да стартирате анализа на времевата рамка.")
 
+   
 
-    st.rerun()
+
+
+
