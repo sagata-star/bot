@@ -6,13 +6,13 @@ from datetime import datetime
 
 # Настройка на уеб страницата
 st.set_page_config(
-    page_title="PO 3 EMA Bot Pro",
+    page_title="Pocket Option 3 EMA Bot",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Агресивен CSS за премахване на излишните празни пространства
+# Компактни CSS стилове за изравняване
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
@@ -79,7 +79,7 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-# --- ВЪРНАТ СТРАНИЧЕН ПАНЕЛ (SIDEBAR) ЗА НАСТРОЙКИ ---
+# --- СТРАНИЧЕН ПАНЕЛ (SIDEBAR) ---
 st.sidebar.title("⚙️ Настройки на Бота")
 timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
 selected_tf = st.sidebar.selectbox("⏱️ Времева рамка за анализ:", timeframes, disabled=st.session_state.is_running)
@@ -89,7 +89,6 @@ elif selected_tf == "2 min": default_fast, default_mid, default_slow = 9, 21, 50
 elif selected_tf == "3 min": default_fast, default_mid, default_slow = 7, 14, 30
 else: default_fast, default_mid, default_slow = 5, 13, 34
 
-st.sidebar.subheader("Адаптивни периоди на EMA")
 fast_p = st.sidebar.number_input("Бърза EMA:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running)
 mid_p = st.sidebar.number_input("Средна EMA:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running)
 slow_p = st.sidebar.number_input("Бавна EMA:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running)
@@ -107,13 +106,13 @@ else:
         st.session_state.is_running = False
         st.rerun()
 
-# Изчисляване на времевия цикъл
+# Изчисляване на пазарния таймер
 tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
 required_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
 remaining_seconds = max(0, required_seconds - elapsed_seconds)
 
-# Смяна на свещта при изтичане на времето
+# Логика за смяна на свещта при изтичане на времето
 if st.session_state.is_running and remaining_seconds == 0:
     tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
     mult = tf_multiplier.get(selected_tf, 1.0)
@@ -131,12 +130,12 @@ if st.session_state.is_running and remaining_seconds == 0:
     st.session_state.last_tick_time = time.time()
     remaining_seconds = required_seconds
 
-# Пазарни изчисления за EMA
+# Пазарни изчисления за ЕМА
 ema_fast = calculate_ema(st.session_state.price_history, fast_p)
 ema_mid = calculate_ema(st.session_state.price_history, mid_p)
 ema_slow = calculate_ema(st.session_state.price_history, slow_p)
 
-# ПРЕЦИЗИРАНЕ ПО ПРЕДХОДНА СВЕЩ (Candle Momentum Analysis)
+# Прецизиране по предходна свещ
 prices_list = list(st.session_state.price_history)
 prev_candle_close = prices_list[-1] if len(prices_list) >= 1 else 0
 prev_candle_open = prices_list[-2] if len(prices_list) >= 2 else 0
@@ -157,50 +156,52 @@ if ema_fast and ema_mid and ema_slow:
         decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация / Филтриран шум)"
         decision_color = "#ffa500"
 
-# --- ЛАЙВ ДАШБОРД ФРАГМЕНТ (СТАБИЛЕН И ПРЕЦИЗЕН) ---
-@st.fragment(run_every=1.0)
-def render_live_dashboard():
-    # Горна инфо линия
-    c1, c2 = st.columns(2)
-    current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
-    c1.markdown(f"🤖 **Pocket Option Pro Terminal** | Актив: `{st.session_state.selected_asset}`")
-    c2.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
-    
-    # Табло за решение
-    st.markdown(f"""
-        <div style="background-color:#11141a; padding:12px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 5px;">
-            <h1 style="color:{decision_color}; margin:0; font-size:22px; font-weight:bold;">{decision_text}</h1>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Пазарна графика (Ултра-компактна)
-    chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-30:]})
-    st.line_chart(chart_df, height=120, use_container_width=True)
-    
-    # Падащо меню и Таймер
-    col_menu, col_timer = st.columns(2)
-    with col_menu:
-        try:
-            current_index = all_otc_assets.index(st.session_state.selected_asset)
-        except ValueError:
-            current_index = 0
-            
-        chosen_asset = st.selectbox("Избор на актив:", all_otc_assets, index=current_index, disabled=st.session_state.is_running, label_visibility="collapsed", key="asset_select_box")
-        
-    rem_sec = max(0, required_seconds - int(time.time() - st.session_state.last_tick_time))
-    
-    with col_timer:
-        if st.session_state.is_running:
-            mins, secs = rem_sec // 60, rem_sec % 60
-            st.markdown(f"<div style='text-align: right; font-size: 14px; margin-top: 4px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div style='text-align: right; color: #888; margin-top: 4px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
+# --- ОСНОВЕН ДЕКСТУП ПАНЕЛ (ВИЗУАЛИЗИРА СЕ ВЕДНАГА) ---
+c1, c2 = st.columns(2)
+current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
+c1.markdown(f"🤖 **Pocket Option Pro Terminal** | Актив: `{st.session_state.selected_asset}`")
+c2.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
 
-    # Проверка за промяна в падащото меню
-    if chosen_asset != st.session_state.selected_asset:
-        st.session_state.selected_asset = chosen_asset
-        st.session_state.price_history = generate_fresh_history(chosen_asset)
-        st.session_state.current_price = st.session_state.price_history[-1]
-        st.session_state.start_price = st.session_state.price_history[-1]
-        st.rerun() # Фиксиран рестарт на уеб сесията при избор
-        
+# Прозорец за решението
+st.markdown(f"""
+    <div style="background-color:#11141a; padding:12px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 5px;">
+        <h1 style="color:{decision_color}; margin:0; font-size:22px; font-weight:bold;">{decision_text}</h1>
+    </div>
+""", unsafe_allow_html=True)
+
+# Пазарна графика
+chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-35:]})
+st.line_chart(chart_df, height=120, use_container_width=True)
+
+# Падащо меню и Таймер (Позиционирани под графиката)
+col_menu, col_timer = st.columns(2)
+
+try:
+    current_index = all_otc_assets.index(st.session_state.selected_asset)
+except ValueError:
+    current_index = 0
+    
+with col_menu:
+    chosen_asset = st.selectbox("Избор на актив:", all_otc_assets, index=current_index, disabled=st.session_state.is_running, label_visibility="collapsed", key="asset_select_box")
+
+with col_timer:
+    if st.session_state.is_running:
+        mins, secs = remaining_seconds // 60, remaining_seconds % 60
+        st.markdown(f"<div style='text-align: right; font-size: 14px; margin-top: 4px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<div style='text-align: right; color: #888; margin-top: 4px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
+
+# Логика за смяна на актива при избор
+if chosen_asset != st.session_state.selected_asset:
+    st.session_state.selected_asset = chosen_asset
+    st.session_state.price_history = generate_fresh_history(chosen_asset)
+    st.session_state.current_price = st.session_state.price_history[-1]
+    st.session_state.start_price = st.session_state.price_history[-1]
+    st.rerun()
+
+# Финансови метрики (Долен ред)
+m1, m2, m3 = st.columns(3)
+decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "TRY"]) else 5
+denom = st.session_state.start_price if st.session_state.start_price != 0 else 1.1234
+pct_change = ((st.session_state.current_price - st.session_state.start_price) / denom) * 100
+
