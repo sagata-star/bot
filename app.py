@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Настройка на уеб страницата
 st.set_page_config(
-    page_title="PO 3 EMA Bot",
+    page_title="PO 3 EMA Bot Pro",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -24,13 +24,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- СПИСЪК С ВСИЧКИ 28 OTC АКТИВА ---
+# --- РАЗШИРЕН СПИСЪК С ВСИЧКИ 38 OTC АКТИВА ---
 all_otc_assets = [
     "EUR/USD (OTC)", "GBP/USD (OTC)", "USD/JPY (OTC)", "AUD/USD (OTC)",
     "EUR/GBP (OTC)", "USD/CAD (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
     "GBP/JPY (OTC)", "EUR/CAD (OTC)", "AUD/CAD (OTC)", "USD/CHF (OTC)",
     "EUR/CHF (OTC)", "CAD/JPY (OTC)", "AUD/JPY (OTC)", "CHF/JPY (OTC)",
-    "GBP/CAD (OTC)", "EUR/AUD (OTC)", "GOLD (OTC)", "SILVER (OTC)",
+    "GBP/CAD (OTC)", "EUR/AUD (OTC)",
+    "NZD/JPY (OTC)", "AUD/NZD (OTC)", "GBP/CHF (OTC)", "EUR/NZD (OTC)",
+    "GBP/AUD (OTC)", "USD/SGD (OTC)", "USD/TRY (OTC)", "EUR/TRY (OTC)",
+    "NZD/CAD (OTC)", "AUD/CHF (OTC)",
+    "GOLD (OTC)", "SILVER (OTC)",
     "APPLE (OTC)", "GOOGLE (OTC)", "MICROSOFT (OTC)", "AMAZON (OTC)", 
     "TESLA (OTC)", "META (OTC)", "NVIDIA (OTC)", "NETFLIX (OTC)"
 ]
@@ -38,6 +42,8 @@ all_otc_assets = [
 @st.cache_data(ttl=600)
 def generate_fresh_history(asset_name):
     if "JPY" in asset_name: base_price = 145.25
+    elif "TRY" in asset_name: base_price = 34.15
+    elif "SGD" in asset_name: base_price = 1.34
     elif "CHF" in asset_name and "JPY" not in asset_name: base_price = 0.8950
     elif "GOLD" in asset_name: base_price = 2350.00
     elif "SILVER" in asset_name: base_price = 28.50
@@ -49,6 +55,7 @@ def generate_fresh_history(asset_name):
     for _ in range(120):
         if base_price > 1000: step = 0.50
         elif base_price > 100: step = 0.10
+        elif base_price > 10: step = 0.01
         else: step = 0.0003
         base_price += random.choice([-step, -step/2, step/2, step])
         history.append(round(base_price, 5))
@@ -96,50 +103,74 @@ else:
         st.session_state.is_running = False
         st.rerun()
 
-# --- МАТЕМАТИЧЕСКИ ИЗЧИСЛЕНИЯ ---
+# --- ХРОНОМЕТЪР И ОБНОВЯВАНЕ НА СВЕЩТА (ИЗВЪН ФРАГМЕНТА ЗА СТАБИЛНОСТ) ---
+tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
+required_seconds = tf_to_seconds.get(selected_tf, 60)
+elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
+remaining_seconds = max(0, required_seconds - elapsed_seconds)
+
+if st.session_state.is_running and remaining_seconds == 0:
+    tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
+    mult = tf_multiplier.get(selected_tf, 1.0)
+    
+    if "GOLD" in st.session_state.selected_asset: step = 0.50 * mult
+    elif "TRY" in st.session_state.selected_asset: step = 0.01 * mult
+    elif "JPY" in st.session_state.selected_asset: step = 0.02 * mult
+    else: step = 0.0003 * mult
+        
+    change = random.choice([-step, -step/2, 0, step/2, step])
+    st.session_state.current_price = round(st.session_state.current_price + change, 5)
+    st.session_state.price_history.append(st.session_state.current_price)
+    if len(st.session_state.price_history) > 120:
+        st.session_state.price_history.pop(0)
+    st.session_state.last_tick_time = time.time()
+    remaining_seconds = required_seconds
+
+# --- МАТЕМАТИЧЕСКИ ИЗЧИСЛЕНИЯ С ПРЕЦИЗНОСТ НА СВЕЩТА ---
 ema_fast = calculate_ema(st.session_state.price_history, fast_p)
 ema_mid = calculate_ema(st.session_state.price_history, mid_p)
 ema_slow = calculate_ema(st.session_state.price_history, slow_p)
+
+prices_list = list(st.session_state.price_history)
+prev_candle_close = prices_list[-1] if len(prices_list) >= 1 else 0
+prev_candle_open = prices_list[-2] if len(prices_list) >= 2 else 0
+is_prev_candle_bullish = prev_candle_close > prev_candle_open
+is_prev_candle_bearish = prev_candle_close < prev_candle_open
 
 decision_text = "ИЗЧАКВАНЕ НА СИГНАЛ ⏳"
 decision_color = "gray"
 
 if ema_fast and ema_mid and ema_slow:
-    if ema_fast > ema_mid > ema_slow:
+    if (ema_fast > ema_mid > ema_slow) and is_prev_candle_bullish:
         decision_text = "КУПУВАЙ (CALL) 🟢"
         decision_color = "#2ebd85"
-    elif ema_fast < ema_mid < ema_slow:
+    elif (ema_fast < ema_mid < ema_slow) and is_prev_candle_bearish:
         decision_text = "ПРОДАВАЙ (PUT) 🔴"
         decision_color = "#df294a"
     else:
-        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Рейндж)"
+        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация / Филтриран шум)"
         decision_color = "#ffa500"
 
 # --- ИЗОЛИРАН СТАТУС ПАНЕЛ (ФРАГМЕНТ) ---
 @st.fragment(run_every=1.0)
 def render_live_dashboard():
-    # Горна линия: Време и Заглавие на един ред
-    c1, c2 = st.columns([2, 1])
+    c1, c2 = st.columns(2)
     with c1:
         st.markdown(f"🤖 **Pocket Option Pro Terminal** | Актив: `{st.session_state.selected_asset}`")
     with c2:
         current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
         st.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
     
-    # Голяма табела за решение (Свита по височина за икономия на място)
     st.markdown(f"""
         <div style="background-color:#11141a; padding:12px; border-radius:6px; border-left: 8px solid {decision_color}; text-align:center; margin-bottom: 10px;">
             <h1 style="color:{decision_color}; margin:0; font-size:26px; font-weight:bold;">{decision_text}</h1>
         </div>
     """, unsafe_allow_html=True)
     
-    # Пазарна графика (Компактна височина - 120px)
     chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-35:]})
     st.line_chart(chart_df, height=120, use_container_width=True)
     
-    # Контролен ред веднага под графиката: Падащо меню + Таймер
-    col_menu, col_timer = st.columns([2, 1])
-    
+    col_menu, col_timer = st.columns(2)
     with col_menu:
         try:
             current_index = all_otc_assets.index(st.session_state.selected_asset)
@@ -158,42 +189,20 @@ def render_live_dashboard():
             st.rerun()
             
     with col_timer:
-        tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
-        required_seconds = tf_to_seconds.get(selected_tf, 60)
-        elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
-        remaining_seconds = max(0, required_seconds - elapsed_seconds)
-        
+        # Изчисляване на оставащите секунди локално във фрагмента
+        rem_sec = max(0, required_seconds - int(time.time() - st.session_state.last_tick_time))
         if st.session_state.is_running:
-            mins, secs = remaining_seconds // 60, remaining_seconds % 60
+            mins, secs = rem_sec // 60, rem_sec % 60
             st.markdown(f"<div style='text-align: right; font-size: 15px; margin-top: 5px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
+            if rem_sec == 0:
+                st.rerun() # Безопасен рестарт САМО при реална смяна на свещта
         else:
             st.markdown("<div style='text-align: right; color: #888; margin-top: 5px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
 
-    # Жизнен цикъл на таймера
-    if st.session_state.is_running and remaining_seconds == 0:
-        tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
-        mult = tf_multiplier.get(selected_tf, 1.0)
-        step = 0.50 * mult if "GOLD" in st.session_state.selected_asset else (0.02 * mult if "JPY" in st.session_state.selected_asset else 0.0003 * mult)
-        
-        change = random.choice([-step, -step/2, 0, step/2, step])
-        st.session_state.current_price = round(st.session_state.current_price + change, 5)
-        st.session_state.price_history.append(st.session_state.current_price)
-        st.session_state.last_tick_time = time.time()
-        st.rerun()
-
     st.write("")
     
-    # Финална хоризонтална линия: Метрики
     m1, m2, m3 = st.columns(3)
     with m1:
-        decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON"]) else 5
+        decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "TRY"]) else 5
         st.metric(label="Текуща Цена", value=f"{st.session_state.current_price:.{decimals}f}")
     with m2:
-        denom = st.session_state.start_price if st.session_state.start_price != 0 else 1.1234
-        pct_change = ((st.session_state.current_price - st.session_state.start_price) / denom) * 100
-        st.metric(label="Промяна сесия", value=f"{pct_change:.3f}%", delta=f"{pct_change:.3f}%")
-    with m3:
-        st.metric(label=f"EMA ({fast_p}/{mid_p}/{slow_p})", value=f"{ema_fast} | {ema_mid} | {ema_slow}")
-
-# Изпълнение
-render_live_dashboard()
