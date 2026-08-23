@@ -2,7 +2,6 @@ import streamlit as st
 import time
 import random
 import pandas as pd
-from datetime import datetime
 
 # Настройка на уеб страницата
 st.set_page_config(
@@ -118,66 +117,68 @@ else:
         st.session_state.is_running = False
         st.rerun()
 
-# Спетификации на таймфрейма
+# Времеви настройки за опресняването
 tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
-required_seconds = tf_to_seconds.get(selected_tf, 60)
+duration_seconds = tf_to_seconds.get(selected_tf, 60)
+elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
+remaining_seconds = max(0, duration_seconds - elapsed_seconds)
 
-# --- ИЗОЛИРАН ДАШБОРД ---
-@st.fragment(run_every=1.0)
-def render_live_dashboard():
-    top_c1, top_c2 = st.columns(2)
-    top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
+# Динамична обработка на цената при нулиране на уеб брояча
+if st.session_state.is_running and remaining_seconds == 0:
+    tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
+    mult = tf_multiplier.get(selected_tf, 1.0)
     
-    js_clock = (
-        "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: monospace; font-size: 14px; font-weight: bold; padding-top: 2px;'>Зареждане...</div>"
-        "<script>"
-        "function updateClock() {"
-        "var n = new Date();"
-        "var d = String(n.getDate()).padStart(2,'0');"
-        "var m = String(n.getMonth()+1).padStart(2,'0');"
-        "var y = n.getFullYear();"
-        "var h = String(n.getHours()).padStart(2,'0');"
-        "var mi = String(n.getMinutes()).padStart(2,'0');"
-        "var s = String(n.getSeconds()).padStart(2,'0');"
-        "document.getElementById('live-clock').innerHTML = '🕒 ' + d + '.' + m + '.' + y + ' | ' + h + ':' + mi + ':' + s;"
-        "}"
-        "updateClock();"
-        "</script>"
-    )
-    top_c2.markdown(js_clock, unsafe_allow_html=True)
-    st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
-
-    elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
-    remaining_seconds = max(0, required_seconds - elapsed_seconds)
-
-    if st.session_state.is_running and remaining_seconds == 0:
-        tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
-        mult = tf_multiplier.get(selected_tf, 1.0)
+    if "BTC" in st.session_state.selected_asset: step = 15.00 * mult
+    elif "ETH" in st.session_state.selected_asset: step = 1.50 * mult
+    elif "GOLD" in st.session_state.selected_asset: step = 0.50 * mult
+    elif "TRY" in st.session_state.selected_asset: step = 0.01 * mult
+    elif "JPY" in st.session_state.selected_asset: step = 0.02 * mult
+    else: step = 0.0003 * mult
         
-        if "BTC" in st.session_state.selected_asset: step = 15.00 * mult
-        elif "ETH" in st.session_state.selected_asset: step = 1.50 * mult
-        elif "GOLD" in st.session_state.selected_asset: step = 0.50 * mult
-        elif "TRY" in st.session_state.selected_asset: step = 0.01 * mult
-        elif "JPY" in st.session_state.selected_asset: step = 0.02 * mult
-        else: step = 0.0003 * mult
-            
-        change = random.choice([-step, -step/2, 0, step/2, step])
-        st.session_state.current_price = round(st.session_state.current_price + change, 5)
-        st.session_state.price_history.append(st.session_state.current_price)
-        if len(st.session_state.price_history) > 120:
-            st.session_state.price_history.pop(0)
-        st.session_state.last_tick_time = time.time()
-        st.rerun()
+    change = random.choice([-step, -step/2, 0, step/2, step])
+    st.session_state.current_price = round(st.session_state.current_price + change, 5)
+    st.session_state.price_history.append(st.session_state.current_price)
+    if len(st.session_state.price_history) > 120:
+        st.session_state.price_history.pop(0)
+    st.session_state.last_tick_time = time.time()
+    remaining_seconds = duration_seconds
 
-    ema_fast = calculate_ema(st.session_state.price_history, fast_p)
-    ema_mid = calculate_ema(st.session_state.price_history, mid_p)
-    ema_slow = calculate_ema(st.session_state.price_history, slow_p)
+# Пазарни изчисления за ЕМА
+ema_fast = calculate_ema(st.session_state.price_history, fast_p)
+ema_mid = calculate_ema(st.session_state.price_history, mid_p)
+ema_slow = calculate_ema(st.session_state.price_history, slow_p)
 
-    prices_list = list(st.session_state.price_history)
-    prev_candle_close = prices_list[-1] if len(prices_list) >= 1 else 0
-    prev_candle_open = prices_list[-2] if len(prices_list) >= 2 else 0
-    is_prev_candle_bullish = prev_candle_close > prev_candle_open
-    is_prev_candle_bearish = prev_candle_close < prev_candle_open
+# Прецизиране по предходна свещ
+prices_list = list(st.session_state.price_history)
+prev_candle_close = prices_list[-1] if len(prices_list) >= 1 else 0
+prev_candle_open = prices_list[-2] if len(prices_list) >= 2 else 0
+is_prev_candle_bullish = prev_candle_close > prev_candle_open
+is_prev_candle_bearish = prev_candle_close < prev_candle_open
 
-    decision_text = "ИЗЧАКВАНЕ НА СИГНАЛ ⏳"
-    decision_color = "#94a3b8"
+decision_text = "ИЗЧАКВАНЕ НА СИГНАЛ ⏳"
+decision_color = "#94a3b8"
+glow_effect = "rgba(148,163,184,0.12)"
+
+if ema_fast and ema_mid and ema_slow:
+    if (ema_fast > ema_mid > ema_slow) and is_prev_candle_bullish:
+        decision_text = "▲ КУПУВАЙ (CALL / HIGHER) 🟢"
+        decision_color = "#2ebd85"
+        glow_effect = "rgba(46,189,133,0.20)"
+    elif (ema_fast < ema_mid < ema_slow) and is_prev_candle_bearish:
+        decision_text = "▼ ПРОДАВАЙ (PUT / LOWER) 🔴"
+        decision_color = "#df294a"
+        glow_effect = "rgba(223,41,74,0.20)"
+    else:
+        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация)"
+        decision_color = "#ffa500"
+        glow_effect = "rgba(255,165,0,0.12)"
+
+# --- ГОРЕН РЕД: ИНФО И ЧАСОВНИК ---
+top_c1, top_c2 = st.columns(2)
+top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
+
+# Локален браузърен JavaScript часовник със секундарник (Светкавично бърз и без презареждане)
+js_clock = (
+    "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: monospace; font-size: 14px; font-weight: bold; padding-top: 2px;'>Зареждане...</div>"
+    "<script>"
+    "function updateClock() {"
