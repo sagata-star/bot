@@ -16,7 +16,6 @@ st.set_page_config(
 st.markdown(
     "<style>"
     ".main { background-color: #0b0e14; }"
-    /* Премахнат черния цвят на Sidebar - Преобразен в дълбоко премиум синьо */
     "[data-testid='stSidebar'] { background-color: #11151f !important; border-right: 1px solid #1f2635; }"
     "div[data-testid='stMetric'] { background: #11151f !important; border: 1px solid #1f2635 !important; border-radius: 8px !important; padding: 8px 12px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; margin-bottom: 0px !important; }"
     ".terminal-title { color: #ffffff; font-family: 'Arial', sans-serif; font-weight: 800; letter-spacing: 0.5px; margin: 0px !important; font-size: 18px !important; }"
@@ -123,10 +122,9 @@ else:
 tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
 required_seconds = tf_to_seconds.get(selected_tf, 60)
 
-# --- ИЗОЛИРАН ДАШБОРД (ФРАГМЕНТ ЗА ЕЖЕСЕКУНДНО ОТБРОЯВАНЕ БЕЗ ЗАБИВАНЕ) ---
+# --- ИЗОЛИРАН ДАШБОРД ---
 @st.fragment(run_every=1.0)
 def render_live_dashboard():
-    # 1. Горна линия: Име + JavaScript Часовник със Секундарник
     top_c1, top_c2 = st.columns(2)
     top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
     
@@ -149,11 +147,9 @@ def render_live_dashboard():
     top_c2.markdown(js_clock, unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
-    # 2. Изчисление на таймера
     elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
     remaining_seconds = max(0, required_seconds - elapsed_seconds)
 
-    # Смяна на свещта при изтичане на времето
     if st.session_state.is_running and remaining_seconds == 0:
         tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
         mult = tf_multiplier.get(selected_tf, 1.0)
@@ -173,9 +169,15 @@ def render_live_dashboard():
         st.session_state.last_tick_time = time.time()
         st.rerun()
 
-    # 3. Прецизен математически анализ
     ema_fast = calculate_ema(st.session_state.price_history, fast_p)
     ema_mid = calculate_ema(st.session_state.price_history, mid_p)
     ema_slow = calculate_ema(st.session_state.price_history, slow_p)
 
     prices_list = list(st.session_state.price_history)
+    prev_candle_close = prices_list[-1] if len(prices_list) >= 1 else 0
+    prev_candle_open = prices_list[-2] if len(prices_list) >= 2 else 0
+    is_prev_candle_bullish = prev_candle_close > prev_candle_open
+    is_prev_candle_bearish = prev_candle_close < prev_candle_open
+
+    decision_text = "ИЗЧАКВАНЕ НА СИГНАЛ ⏳"
+    decision_color = "#94a3b8"
