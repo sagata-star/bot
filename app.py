@@ -229,4 +229,4 @@ timer_placeholder = st.empty()
 # Блок 2: Метрики
 col1, col2, col3 = st.columns(3)
 
-with col2:
+with col0:
