@@ -1,6 +1,8 @@
 import streamlit as st
 import time
 import random
+import pandas as pd
+from datetime import datetime
 
 # Настройка на уеб страницата
 st.set_page_config(
@@ -73,7 +75,7 @@ def generate_fresh_history(asset_name):
         history.append(round(base_price, 5))
     return history
 
-# --- ИНИЦИАЛИЗАЦИЯ НА СЕСИЯТА ---
+# --- ИНИЦИАЛИЗАЦИЯ НА СЕСИЙНИТЕ ПРОМЕНЛИВИ ---
 if "is_running" not in st.session_state: st.session_state.is_running = False
 if "selected_asset" not in st.session_state: st.session_state.selected_asset = "EUR/USD (OTC)"
 if "price_history" not in st.session_state: st.session_state.price_history = generate_fresh_history(st.session_state.selected_asset)
@@ -136,8 +138,15 @@ if st.session_state.is_running and remaining_seconds == 0:
     change = random.choice([-step, -step/2, 0, step/2, step])
     st.session_state.current_price = round(st.session_state.current_price + change, 5)
     st.session_state.price_history.append(st.session_state.current_price)
+    # Свиваме историята до последните 120 записа за висока производителност
+    if len(st.session_state.price_history) > 120:
+        st.session_state.price_history.pop(0)
     st.session_state.last_tick_time = time.time()
     remaining_seconds = required_seconds
+
+# --- 📅 СЕКЦИЯ: ДАТА И ЧАС СЪС СЕКУНДАРНИК 📅 ---
+current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
+st.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace; font-size: 14px;'>🕒 Текущо време: {current_datetime}</div>", unsafe_allow_html=True)
 
 # --- ОСНОВЕН ИНТЕРФЕЙС (ГОРНА ЧАСТ) ---
 st.title("🤖 Pocket Option Pro: Live Trading Terminal")
@@ -171,6 +180,14 @@ st.markdown(f"""
 
 st.write("")
 
+# --- 📊 НОВА СЕКЦИЯ: ОЛЕКОТЕНА ПАЗАРНА ГРАФИКА ЗА АНАЛИЗ В РЕАЛНО ВРЕМЕ 📊 ---
+st.write(f"##### 📈 Пазарно движение в реално време за `{st.session_state.selected_asset}`")
+# Превръщаме последните 40 котировки от паметта в DataFrame, за да ги начертаем
+chart_df = pd.DataFrame({
+    "Пазарна Цена": list(st.session_state.price_history)[-40:]
+})
+st.line_chart(chart_df, height=200, use_container_width=True)
+
 # Таймер за следващ вход
 if st.session_state.is_running:
     mins = remaining_seconds // 60
@@ -201,21 +218,3 @@ def render_asset_grid(asset_list, num_columns=6):
     for idx, asset in enumerate(asset_list):
         target_col = cols[idx % num_columns]
         with target_col:
-            is_active = asset == st.session_state.selected_asset
-            btn_type = "primary" if is_active else "secondary"
-            if st.button(asset, key=f"btn_{asset}", type=btn_type, use_container_width=True, disabled=st.session_state.is_running):
-                st.session_state.selected_asset = asset
-                st.session_state.price_history = generate_fresh_history(asset)
-                st.session_state.current_price = st.session_state.price_history[-1]
-                st.session_state.start_price = st.session_state.price_history[-1]
-                st.rerun()
-
-st.write("##### 💱 Валутни двойки (Forex OTC)")
-render_asset_grid(forex_pairs, num_columns=6)
-
-st.write("##### 🏭 Стоки & Stocks OTC")
-render_asset_grid(crypto_commodities + stocks, num_columns=5)
-
-# --- АВТОМАТИЧНО УЕБ ОПРЕСНЯВАНЕ ---
-if st.session_state.is_running:
-    st.markdown("""<meta http-equiv="refresh" content="1">""", unsafe_allow_html=True)
