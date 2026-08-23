@@ -12,16 +12,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Модерен Неонов CSS дизайн за уеб терминала
+# Агресивен CSS за мащабиране на цялото съдържание в рамките на 1 екран
 st.markdown(
     "<style>"
     ".main { background-color: #0b0e14; }"
     "[data-testid='stSidebar'] { background-color: #11151f !important; border-right: 1px solid #1f2635; }"
-    "div[data-testid='stMetric'] { background: #11151f !important; border: 1px solid #1f2635 !important; border-radius: 12px !important; padding: 16px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; margin-bottom: 12px !important; }"
-    ".terminal-title { color: #ffffff; font-family: 'Arial', sans-serif; font-weight: 800; letter-spacing: 0.5px; margin: 0px !important; }"
-    "div[data-testid='stMetricValue'] { font-family: 'Courier New', monospace !important; font-size: 20px !important; font-weight: bold !important; color: #e2e8f0 !important; }"
-    "div[data-testid='stMetricLabel'] { font-size: 11px !important; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8 !important; }"
-    ".block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }"
+    /* Свиване на метричните карти по височина */
+    "div[data-testid='stMetric'] { background: #11151f !important; border: 1px solid #1f2635 !important; border-radius: 8px !important; padding: 8px 12px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; margin-bottom: 0px !important; }"
+    ".terminal-title { color: #ffffff; font-family: 'Arial', sans-serif; font-weight: 800; letter-spacing: 0.5px; margin: 0px !important; font-size: 18px !important; }"
+    "div[data-testid='stMetricValue'] { font-family: 'Courier New', monospace !important; font-size: 16px !important; font-weight: bold !important; color: #e2e8f0 !important; }"
+    "div[data-testid='stMetricLabel'] { font-size: 10px !important; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8 !important; }"
+    /* Ултра-минималистични контейнерни отстъпи за Streamlit */
+    ".block-container { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }"
+    "div[data-testid='stHorizontalBlock'] { gap: 8px !important; }"
+    ".stSelectbox, .stButton, .stNumberInput { margin-bottom: 0px !important; }"
     "</style>",
     unsafe_allow_html=True
 )
@@ -79,8 +83,8 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-# --- SIDEBAR НАСТРОЙКИ ---
-st.sidebar.markdown("<h2 style='color:#ffffff; font-size:20px; font-weight:bold; margin-bottom:5px;'>⚙️ КОНФИГУРАЦИЯ</h2>", unsafe_allow_html=True)
+# --- SIDEBAR НАСТРОЙКИ (ЗАПАЗЕН) ---
+st.sidebar.markdown("<h2 style='color:#ffffff; font-size:18px; font-weight:bold; margin-bottom:5px;'>⚙️ КОНФИГУРАЦИЯ</h2>", unsafe_allow_html=True)
 timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
 selected_tf = st.sidebar.selectbox("⏱️ Графичен Таймфрейм:", timeframes, disabled=st.session_state.is_running)
 
@@ -89,12 +93,12 @@ elif selected_tf == "2 min": default_fast, default_mid, default_slow = 9, 21, 50
 elif selected_tf == "3 min": default_fast, default_mid, default_slow = 7, 14, 30
 else: default_fast, default_mid, default_slow = 5, 13, 34
 
-st.sidebar.markdown("<br>", unsafe_allow_html=True)
-fast_p = st.sidebar.number_input("⚡ Бърза EMA период:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running)
-mid_p = st.sidebar.number_input("📊 Средна EMA период:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running)
-slow_p = st.sidebar.number_input("🐢 Бавна EMA период:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running)
+st.sidebar.markdown("<div style='margin-bottom:5px;'></div>", unsafe_allow_html=True)
+fast_p = st.sidebar.number_input("⚡ Бърза EMA:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running)
+mid_p = st.sidebar.number_input("📊 Средна EMA:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running)
+slow_p = st.sidebar.number_input("🐢 Бавна EMA:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running)
 
-st.sidebar.markdown("<hr style='border-color:#232a38;'>", unsafe_allow_html=True)
+st.sidebar.markdown("<hr style='border-color:#232a38; margin: 10px 0;'>", unsafe_allow_html=True)
 
 if not st.session_state.is_running:
     if st.sidebar.button("🚀 СТАРТИРАЙ АНАЛИЗА", use_container_width=True, type="primary"):
@@ -139,29 +143,29 @@ is_prev_candle_bearish = prev_candle_close < prev_candle_open
 
 decision_text = "ИЗЧАКВАНЕ НА СИГНАЛ ⏳"
 decision_color = "#94a3b8"
-glow_effect = "rgba(148,163,184,0.15)"
+glow_effect = "rgba(148,163,184,0.12)"
 
 if ema_fast and ema_mid and ema_slow:
     if (ema_fast > ema_mid > ema_slow) and is_prev_candle_bullish:
         decision_text = "КУПУВАЙ (CALL / HIGHER) 🟢"
         decision_color = "#2ebd85"
-        glow_effect = "rgba(46,189,133,0.25)"
+        glow_effect = "rgba(46,189,133,0.20)"
     elif (ema_fast < ema_mid < ema_slow) and is_prev_candle_bearish:
         decision_text = "ПРОДАВАЙ (PUT / LOWER) 🔴"
         decision_color = "#df294a"
-        glow_effect = "rgba(223,41,74,0.25)"
+        glow_effect = "rgba(223,41,74,0.20)"
     else:
-        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация)"
+        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Консолидация)"
         decision_color = "#ffa500"
-        glow_effect = "rgba(255,165,0,0.15)"
+        glow_effect = "rgba(255,165,0,0.12)"
 
 # --- ГОРЕН РЕД: ИНФО И ЧАСОВНИК ---
 top_c1, top_c2 = st.columns(2)
 top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-# Жив JavaScript часовник с единични кавички
+# Жив JavaScript часовник (Без смущения на кавичките)
 top_c2.markdown(
-    "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: \"Courier New\", monospace; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(56,189,248,0.3); padding-top: 5px;'>Зареждане...</div>"
+    "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: \"Courier New\", monospace; font-size: 14px; font-weight: bold; padding-top: 2px;'>Зареждане...</div>"
     "<script>"
     "function updateClock() {"
     "var now = new Date();"
@@ -179,8 +183,8 @@ top_c2.markdown(
     unsafe_allow_html=True
 )
 
-# --- ФИКСИРАН ОСНОВЕН ДАШБОРД (ИЗГЕБНАТИ СА ВСИЧКИ ТРОЙНИ КАВИЧКИ ЗА HTML СТРИНГОВЕ) ---
-dashboard_style = "<div style='background-color:#11151f; padding:18px; border-radius:10px; border: 1px solid #1f2635; border-left: 10px solid " + decision_color + "; box-shadow: 0 0 25px " + glow_effect + "; text-align:center; margin-bottom: 12px;'>"
-dashboard_label1 = "<span style='color:#64748b; text-transform: uppercase; font-size:11px; letter-spacing:1.5px; font-weight:bold;'>Анализиран инструмент в реално време</span>"
-dashboard_asset = "<h2 style='color:#ffffff; margin:2px 0; font-size:20px; font-weight:800;'>" + str(st.session_state.selected_asset) + "</h2>"
-dashboard_hr = "<hr style='border: 0; border-top: 1px solid #1f2635; margin: 10px 0;'>"
+st.markdown("<div style='margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+
+# --- ОСНОВЕН ДАШБОРД (ТРЕЙДИНГ БОКС - Компактна височина) ---
+st.markdown(
+    "<div style='background-color:#11151f; padding:10px 14px; border-radius:6px; border: 1px solid #1f2635; border-left: 8px solid " + decision_color + "; box-shadow: 0 0 15px " + glow_effect + "; text-align:center; margin-bottom: 6px;'>"
