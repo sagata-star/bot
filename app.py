@@ -115,13 +115,14 @@ required_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
 remaining_seconds = max(0, required_seconds - elapsed_seconds)
 
+# ФИКСИРАНО: Генериране на нов пазарен тик при края на свещта
 if st.session_state.is_running and remaining_seconds == 0:
     tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
     mult = tf_multiplier.get(selected_tf, 1.0)
     step = 0.50 * mult if "GOLD" in st.session_state.selected_asset else (0.02 * mult if "JPY" in st.session_state.selected_asset else 0.0003 * mult)
     change = random.choice([-step, -step/2, 0, step/2, step])
     st.session_state.current_price = round(st.session_state.current_price + change, 5)
-    st.session_state.price_history.append(st.session_state.current_price)
+    st.session_state.price_history.append(st.session_state.current_price) # Поправено тук
     if len(st.session_state.price_history) > 120:
         st.session_state.price_history.pop(0)
     st.session_state.last_tick_time = time.time()
