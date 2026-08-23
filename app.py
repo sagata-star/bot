@@ -24,14 +24,14 @@ st.markdown("""
         border-right: 1px solid #1f2635;
     }
     
-    /* Премиум контейнери (Карти) */
-    .trading-card {
-        background: #11151f;
-        border: 1px solid #1f2635;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    /* Автоматично превръщане на вградените Streamlit метрични контейнери в карти */
+    div[data-testid="stMetric"] {
+        background: #11151f !important;
+        border: 1px solid #1f2635 !important;
+        border-radius: 12px !important;
+        padding: 16px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+        margin-bottom: 12px !important;
     }
     
     /* Ефектни заглавия */
@@ -46,7 +46,7 @@ st.markdown("""
     /* Стилизиране на вградените Streamlit метрики */
     div[data-testid="stMetricValue"] {
         font-family: 'Courier New', monospace !important;
-        font-size: 22px !important;
+        font-size: 20px !important;
         font-weight: bold !important;
         color: #e2e8f0 !important;
     }
