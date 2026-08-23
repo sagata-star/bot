@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Модерен Неонов CSS дизайн за уеб терминала - Капсулиран на едно място
+# Модерен Неонов CSS дизайн за уеб терминала
 st.markdown(
     "<style>"
     ".main { background-color: #0b0e14; }"
@@ -26,7 +26,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Списък с всички 38 OTC актива
+# Смес от всички 38 OTC актива
 all_otc_assets = [
     "EUR/USD (OTC)", "GBP/USD (OTC)", "USD/JPY (OTC)", "AUD/USD (OTC)",
     "EUR/GBP (OTC)", "USD/CAD (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
@@ -159,30 +159,30 @@ if ema_fast and ema_mid and ema_slow:
 top_c1, top_c2 = st.columns(2)
 top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-# Жив JavaScript часовник с единични кавички
-top_c2.markdown(
-    "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: \"Courier New\", monospace; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(56,189,248,0.3); padding-top: 5px;'>Зареждане...</div>"
-    "<script>"
-    "function updateClock() {"
-    "var now = new Date();"
-    "var d = String(now.getDate()).padStart(2, '0');"
-    "var m = String(now.getMonth() + 1).padStart(2, '0');"
-    "var y = now.getFullYear();"
-    "var hrs = String(now.getHours()).padStart(2, '0');"
-    "var mins = String(now.getMinutes()).padStart(2, '0');"
-    "var secs = String(now.getSeconds()).padStart(2, '0');"
-    "document.getElementById('live-clock').innerHTML = '🕒 ' + d + '.' + m + '.' + y + ' | ' + hrs + ':' + mins + ':' + secs;"
-    "}"
-    "setInterval(updateClock, 1000);"
-    "updateClock();"
-    "</script>",
-    unsafe_allow_html=True
-)
+# ФИКСИРАНО: Безопасен HTML/JS часовник без сблъсък на кавички и незатворени скоби
+clock_html = """
+<div id="live-clock" style="text-align: right; color: #38bdf8; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(56,189,248,0.3); padding-top: 5px;">Зареждане...</div>
+<script>
+function updateClock() {
+    var now = new Date();
+    var d = String(now.getDate()).padStart(2, '0');
+    var m = String(now.getMonth() + 1).padStart(2, '0');
+    var y = now.getFullYear();
+    var hrs = String(now.getHours()).padStart(2, '0');
+    var mins = String(now.getMinutes()).padStart(2, '0');
+    var secs = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('live-clock').innerHTML = '🕒 ' + d + '.' + m + '.' + y + ' | ' + hrs + ':' + mins + ':' + secs;
+}
+setInterval(updateClock, 1000);
+updateClock();
+</script>
+"""
+top_c2.markdown(clock_html, unsafe_allow_html=True)
 
 # --- ОСНОВЕН ДАШБОРД (ТРЕЙДИНГ БОКС) ---
-st.markdown(
-    f"<div style='background-color:#11151f; padding:18px; border-radius:10px; border: 1px solid #1f2635; border-left: 10px solid {decision_color}; box-shadow: 0 0 25px {glow_effect}; text-align:center; margin-bottom: 12px;'>"
-    f"<span style='color:#64748b; text-transform: uppercase; font-size:11px; letter-spacing:1.5px; font-weight:bold;'>Анализиран инструмент в реално време</span>"
-    f"<h2 style='color:#ffffff; margin:2px 0; font-size:20px; font-weight:800;'>{st.session_state.selected_asset}</h2>"
-    f"<hr style='border: 0; border-top: 1px solid #1f2635; margin: 10px 0;'>"
-    f"<span style='color:#64748b; text-transform: uppercase; font-size:11px; letter-spacing:1.5px; font-weight:bold;'>Препоръка на 3 EMA Алгоритъма</span>"
+dashboard_html = f"""
+<div style="background-color:#11151f; padding:18px; border-radius:10px; border: 1px solid #1f2635; border-left: 10px solid {decision_color}; box-shadow: 0 0 25px {glow_effect}; text-align:center; margin-bottom: 12px;">
+    <span style="color:#64748b; text-transform: uppercase; font-size:11px; letter-spacing:1.5px; font-weight:bold;">Анализиран инструмент в реално време</span>
+    <h2 style="color:#ffffff; margin:2px 0; font-size:20px; font-weight:800;">{st.session_state.selected_asset}</h2>
+    <hr style="border: 0; border-top: 1px solid #1f2635; margin: 10px 0;">
+    <span style="color:#64748b; text-transform: uppercase; font-size:11px; letter-spacing:1.5px; font-weight:bold;">Препоръка на 3 EMA Алгоритъма</span>
