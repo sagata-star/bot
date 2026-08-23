@@ -178,11 +178,10 @@ if ema_fast and ema_mid and ema_slow:
 top_c1, top_c2 = st.columns(2)
 top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-# Локален браузърен JavaScript часовник със секундарник
-js_clock = (
+# ФИКСИРАНО: Почистен JavaScript часовник без тройни кавички и без сблъсък на символи
+clock_html = (
     "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: monospace; font-size: 14px; font-weight: bold; padding-top: 2px;'>Зареждане...</div>"
     "<script>"
-    "function updateClock() {"
-    "var n = new Date();"
-    "var d = String(n.getDate()).padStart(2,'0');"
-    "var m = String(n.getMonth()+1).padStart(2,'0');"
+    "setInterval(function() {"
+    "  var n = new Date();"
+    "  var h = String(n.getHours()).padStart(2, '0');"
