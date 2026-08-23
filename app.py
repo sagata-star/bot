@@ -148,7 +148,7 @@ if ema_fast and ema_mid and ema_slow:
         decision_text = "ПРОДАВАЙ (PUT) 🔴"
         decision_color = "#df294a"
     else:
-        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация / Филтриран шум)"
+        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация / Фтилтриран шум)"
         decision_color = "#ffa500"
 
 # --- ИЗОЛИРАН СТАТУС ПАНЕЛ (ФРАГМЕНТ) ---
@@ -200,7 +200,7 @@ def render_live_dashboard():
 
     st.write("")
     
-    # ФИКСИРАНИ И ИЗРАВНЕНИ МЕТРИКИ (Точно подравнени 4 интервала отстъп)
+    # СТРИКТНО СИНТАКТИЧНО ИЗРАВНЯВАНЕ НА МЕТРИКИТЕ (БЕЗ СМЕСЕНИ ТАБОВЕ/ИНТЕРВАЛИ)
     m1, m2, m3 = st.columns(3)
     with m1:
         decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "TRY"]) else 5
