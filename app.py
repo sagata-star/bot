@@ -31,6 +31,10 @@ all_otc_assets = [
     "GBP/JPY (OTC)", "EUR/CAD (OTC)", "AUD/CAD (OTC)", "USD/CHF (OTC)",
     "EUR/CHF (OTC)", "CAD/JPY (OTC)", "AUD/JPY (OTC)", "CHF/JPY (OTC)",
     "GBP/CAD (OTC)", "EUR/AUD (OTC)", "GOLD (OTC)", "SILVER (OTC)",
+    "EUR/CHF (OTC)", "CAD/JPY (OTC)", "AUD/JPY (OTC)", "CHF/JPY (OTC)",
+    "GBP/CAD (OTC)", "EUR/AUD (OTC)", "NZD/JPY (OTC)", "AUD/NZD (OTC)",
+    "GBP/CHF (OTC)", "EUR/NZD (OTC)", "GBP/AUD (OTC)", "USD/SGD (OTC)",
+    "USD/TRY (OTC)", "EUR/TRY (OTC)", "NZD/CAD (OTC)", "AUD/CHF (OTC)",
     "APPLE (OTC)", "GOOGLE (OTC)", "MICROSOFT (OTC)", "AMAZON (OTC)", 
     "TESLA (OTC)", "META (OTC)", "NVIDIA (OTC)", "NETFLIX (OTC)"
 ]
