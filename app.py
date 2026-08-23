@@ -218,5 +218,4 @@ render_asset_grid(crypto_commodities + stocks, num_columns=5)
 
 # --- АВТОМАТИЧНО УЕБ ОПРЕСНЯВАНЕ ---
 if st.session_state.is_running:
-    st.markdown("""
-        <meta http-equiv="refresh" content="1">
+    st.markdown("""<meta http-equiv="refresh" content="1">""", unsafe_allow_html=True)
