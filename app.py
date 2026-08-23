@@ -4,37 +4,78 @@ import random
 
 # Настройка на уеб страницата
 st.set_page_config(
-    page_title="Pocket Option Ultra EMA+RSI Web Bot",
+    page_title="Pocket Option 3 EMA Web Bot Ultra",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Стилове за тъмна тема и красиви панели
+# Инжектиране на ССS стилове за компактни бутони и цветово кодиране
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
     div[data-testid="stMetricValue"] { font-size: 24px; font-weight: bold; }
-    .reportview-container .main .block-container { padding-top: 2rem; }
+    
+    /* Стил за активния (зелен) бутон */
+    div.stButton > button[kind="primary"] {
+        background-color: #2ebd85 !important;
+        color: white !important;
+        border: none !important;
+        padding: 4px 6px !important;
+        font-size: 11px !important;
+        font-weight: bold !important;
+    }
+    
+    /* Стил за обикновените малки бутони */
+    div.stButton > button[kind="secondary"] {
+        background-color: #2b303c !important;
+        color: #ffffff !important;
+        border: 1px solid #444 !important;
+        padding: 4px 6px !important;
+        font-size: 11px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Списък с 18-те най-популярни OTC двойки в Pocket Option (8 стари + 10 нови)
-otc_pairs = [
+# --- ДЕФИНИРАНЕ НА КАТЕГОРИИТЕ АКТИВИ (ОБЩО 28 АКТИВА) ---
+forex_pairs = [
     "EUR/USD (OTC)", "GBP/USD (OTC)", "USD/JPY (OTC)", "AUD/USD (OTC)",
     "EUR/GBP (OTC)", "USD/CAD (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
-    "GBP/JPY (OTC)", "CHF/JPY (OTC)", "EUR/CHF (OTC)", "CAD/chf (OTC)",
-    "AUD/JPY (OTC)", "EUR/CAD (OTC)", "GBP/CAD (OTC)", "AUD/CAD (OTC)",
-    "NZD/JPY (OTC)", "USD/CHF (OTC)"
+    "GBP/JPY (OTC)", "EUR/CAD (OTC)", "AUD/CAD (OTC)", "USD/CHF (OTC)",
+    "EUR/CHF (OTC)", "CAD/JPY (OTC)", "AUD/JPY (OTC)", "CHF/JPY (OTC)",
+    "GBP/CAD (OTC)", "EUR/AUD (OTC)"
 ]
 
-# --- ОПТИМИЗИРАНО КЕШИРАНЕ ЗА СВЕТКАВИЧНО ЗАРЕЖДАНЕ ---
+crypto_commodities = ["GOLD (OTC)", "SILVER (OTC)"]
+
+stocks = [
+    "APPLE (OTC)", "GOOGLE (OTC)", "MICROSOFT (OTC)", "AMAZON (OTC)", 
+    "TESLA (OTC)", "META (OTC)", "NVIDIA (OTC)", "NETFLIX (OTC)"
+]
+
+# --- ОПТИМИЗИРАНО КЕШИРАНЕ ЗА ПО-БЪРЗО ЗАРЕЖДАНЕ ---
 @st.cache_data(ttl=600)
 def generate_fresh_history(asset_name):
-    base_price = 145.25 if "JPY" in asset_name else (0.9500 if "CHF" in asset_name else 1.1234)
+    if "JPY" in asset_name:
+        base_price = 145.25
+    elif "CHF" in asset_name and "JPY" not in asset_name:
+        base_price = 0.8950
+    elif "GOLD" in asset_name:
+        base_price = 2350.00
+    elif "SILVER" in asset_name:
+        base_price = 28.50
+    elif any(x in asset_name for x in ["APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON"]):
+        base_price = random.uniform(150.00, 450.00)
+    else:
+        base_price = 1.1234
+        
     history = []
-    for _ in range(85):
-        step = 0.02 if "JPY" in asset_name else 0.0003
+    # Пазим до 120 свещи за дълбочина при изчисляването на по-бавни ЕМА
+    for _ in range(120):
+        if base_price > 1000: step = 0.50
+        elif base_price > 100: step = 0.10
+        else: step = 0.0003
+        
         base_price += random.choice([-step, -step/2, step/2, step])
         history.append(round(base_price, 5))
     return history
@@ -64,154 +105,129 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-def calculate_rsi(prices, period=14):
-    if len(prices) < period + 1:
-        return 50.0
-    gains, losses = [], []
-    for i in range(1, len(prices)):
-        diff = prices[i] - prices[i-1]
-        if diff > 0:
-            gains.append(diff)
-            losses.append(0)
-        else:
-            gains.append(0)
-            losses.append(abs(diff))
-    avg_gain = sum(gains[-period:]) / period
-    avg_loss = sum(losses[-period:]) / period
-    if avg_loss == 0:
-        return 100.0
-    rs = avg_gain / avg_loss
-    return round(100 - (100 / (1 + rs)), 2)
-
 def add_log(msg):
     timestamp = time.strftime("[%H:%M:%S] ")
     st.session_state.logs.append(timestamp + msg)
     if len(st.session_state.logs) > 30:
         st.session_state.logs.pop(0)
 
-# --- СТРАНИЧЕН ПАНЕЛ (САМО ТЕХНИЧЕСКИ НАСТРОЙКИ) ---
-st.sidebar.title("⚙️ Техническа Конфигурация")
+# --- СТРАНИЧЕН ПАНЕЛ (НАСТРОЙКИ ЗА УПРАВЛЕНИЕ) ---
+st.sidebar.title("⚙ Конфигурация")
+
+# 1. Избор на времева рамка
+timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
+selected_tf = st.sidebar.selectbox("⏱ Времева рамка за анализ:", timeframes, disabled=st.session_state.is_running)
+
+# 2. Сума на сделка
 stake = st.sidebar.number_input("💰 Сума на сделка ($):", min_value=1.0, max_value=1000.0, value=10.0, step=5.0, disabled=st.session_state.is_running)
 
-st.sidebar.subheader("Параметри на индикаторите")
-fast_p = st.sidebar.number_input("Бърза EMA:", min_value=2, max_value=20, value=9, disabled=st.session_state.is_running)
-mid_p = st.sidebar.number_input("Средна EMA:", min_value=10, max_value=50, value=21, disabled=st.session_state.is_running)
-slow_p = st.sidebar.number_input("Бавна EMA:", min_value=20, max_value=200, value=50, disabled=st.session_state.is_running)
-rsi_p = st.sidebar.number_input("RSI Период:", min_value=5, max_value=30, value=14, disabled=st.session_state.is_running)
+# --- 🧠 ДИНАМИЧНО АДАПТИРАНЕ НА ИНДИКАТОРИТЕ СПРЯМО ВРЕМЕВИЯ ДИАПАЗОН ---
+if selected_tf == "1 min":
+    default_fast, default_mid, default_slow = 12, 26, 100
+    tf_description = "ИЗГЛАЖДАНЕ НА ПАЗАРНИЯ ШУМ (Висока филтрация)"
+elif selected_tf == "2 min":
+    default_fast, default_mid, default_slow = 9, 21, 50
+    tf_description = "СТАНДАРТЕН СБАЛАНСИРАН АНАЛИЗ"
+elif selected_tf == "3 min":
+    default_fast, default_mid, default_slow = 7, 14, 30
+    tf_description = "БЪРЗА РЕАКЦИЯ НА КРАТКОСРОЧНИ ТРЕНДОВЕ"
+else:  # 5 min или 10 min
+    default_fast, default_mid, default_slow = 5, 13, 34
+    tf_description = "МАКСИМАЛНО РАНЕН ВХОД В ТРЕНДА (Висока чувствителност)"
 
+st.sidebar.subheader("Адаптивни периоди на EMA")
+fast_p = st.sidebar.number_input("Бърза EMA:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running)
+mid_p = st.sidebar.number_input("Средна EMA:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running)
+slow_p = st.sidebar.number_input("Бавна EMA:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running)
+
+st.sidebar.markdown(f"**Режим на анализ:** \n_{tf_description}_")
+st.sidebar.markdown("---")
+
+# Бутони за Старт и Стоп
+if not st.session_state.is_running:
+    if st.sidebar.button("🚀 СТАРТИРАЙ БОТ", use_container_width=True):
+        if fast_p >= mid_p or mid_p >= slow_p:
+            st.sidebar.error("Грешка: Подредбата трябва да е Бърза < Средна < Бавна!")
+        else:
+            st.session_state.is_running = True
+            st.session_state.start_price = st.session_state.current_price
+            add_log(f"СТАРТ: {st.session_state.selected_asset} | Рамка: {selected_tf} | Режим: {tf_description}")
+            st.rerun()
+else:
+    if st.sidebar.button("🛑 СПРИ БОТ", use_container_width=True):
+        st.session_state.is_running = False
+        add_log("СТОП: Ботът преустанови анализите.")
+        st.rerun()
 
 # --- ОСНОВЕН ПАНЕЛ (УЕБ ИНТЕРФЕЙС) ---
-st.title("🤖 Pocket Option Ultra: 3 EMA + RSI Precision 1-min Bot")
+st.title("🤖 Pocket Option Pro: Multi-Asset Terminal")
 
-# --- СЕКЦИЯ: ИНТЕРАКТИВНА РЕШЕТКА СЪС СЪКРАТЕНИ 18 БУТОНА ЗА АКТИВИ ---
-st.subheader("📈 Търговски активи (Общо 18 Разширени OTC двойки)")
-cols = st.columns(6)  # Подредени компактно в 6 колони
+# --- СЕКЦИЯ: ИНТЕРФЕЙС С БУТОНИ ПО КАТЕГОРИИ ---
+st.write("### 📈 Избор на търговски актив (Pocket Option OTC)")
 
-for idx, asset in enumerate(otc_pairs):
-    target_col = cols[idx % 6]
-    with target_col:
-        button_label = f"⭐ {asset.split()[0]}" if asset == st.session_state.selected_asset else asset.split()[0]
-        if st.button(button_label, key=f"btn_{asset}", use_container_width=True, disabled=st.session_state.is_running):
-            st.session_state.selected_asset = asset
-            st.session_state.price_history = generate_fresh_history(asset)
-            st.session_state.current_price = st.session_state.price_history[-1]
-            st.session_state.start_price = st.session_state.price_history[-1]
-            add_log(f"🔄 Превключване на актив: {asset}")
-            st.rerun()
+def render_asset_grid(asset_list, num_columns=6):
+    cols = st.columns(num_columns)
+    for idx, asset in enumerate(asset_list):
+        target_col = cols[idx % num_columns]
+        with target_col:
+            is_active = asset == st.session_state.selected_asset
+            btn_type = "primary" if is_active else "secondary"
+            if st.button(asset, key=f"btn_{asset}", type=btn_type, use_container_width=True, disabled=st.session_state.is_running):
+                st.session_state.selected_asset = asset
+                st.session_state.price_history = generate_fresh_history(asset)
+                st.session_state.current_price = st.session_state.price_history[-1]
+                st.session_state.start_price = st.session_state.price_history[-1]
+                add_log(f"🔄 Превключване на актив: {asset}")
+                st.rerun()
+
+st.write("##### 💱 Валутни двойки (Forex OTC)")
+render_asset_grid(forex_pairs, num_columns=6)
+
+st.write("##### 🏭 Стоки & 🏛 Световни Корпорации (Stocks OTC)")
+all_assets_remaining = crypto_commodities + stocks
+render_asset_grid(all_assets_remaining, num_columns=5)
 
 st.write("")
 
-# --- МАТЕМАТИЧЕСКИ ИЗЧИСЛЕНИЯ ЗА ПРЕЦИЗЕН АНАЛИЗ ---
+# --- МАТЕМАТИЧЕСКИ ИЗЧИСЛЕНИЯ (ДИНАМИЧНА ПРЕЦИЗНОСТ ЗА ИЗБРАНИЯ ДИАПАЗОН) ---
 ema_fast = calculate_ema(st.session_state.price_history, fast_p)
 ema_mid = calculate_ema(st.session_state.price_history, mid_p)
 ema_slow = calculate_ema(st.session_state.price_history, slow_p)
-current_rsi = calculate_rsi(st.session_state.price_history, rsi_p)
-current_price = st.session_state.current_price
 
 decision_text = "ИЗЧАКВАНЕ НА СИГНАЛ ⏳"
 decision_color = "gray"
 
-if Glen := (ema_fast and ema_mid and ema_slow):
-    # УЛТРА ПРЕЦИЗНО УСЛОВИЕ ЗА ПОКУПКА (EMA подредба + RSI филтър + Потвърждение от последна цена/Price Action)
-    if (ema_fast > ema_mid > ema_slow) and (current_rsi < 68) and (current_price > ema_fast):
+if ema_fast and ema_mid and ema_slow:
+    if ema_fast > ema_mid > ema_slow:
         decision_text = "КУПУВАЙ (CALL / HIGHER) 🟢"
         decision_color = "#2ebd85"
         if st.session_state.is_running and (len(st.session_state.logs) == 0 or "CALL" not in st.session_state.logs[-1]):
-            add_log(f"🟢 СИГНАЛ: CALL на {st.session_state.selected_asset} | Цена: {current_price} | RSI: {current_rsi}")
-            
-    # УЛТРА ПРЕЦИЗНО УСЛОВИЕ ЗА ПРОДАЖБА (EMA подредба + RSI филтър + Потвърждение от последна цена/Price Action)
-    elif (ema_fast < ema_mid < ema_slow) and (current_rsi > 32) and (current_price < ema_fast):
+            add_log(f"🟢 СИГНАЛ ЗА ПЕЧАЛБА: CALL на {st.session_state.selected_asset} при цена {st.session_state.current_price} [Фрейм: {selected_tf}]")
+    elif ema_fast < ema_mid < ema_slow:
         decision_text = "ПРОДАВАЙ (PUT / LOWER) 🔴"
         decision_color = "#df294a"
         if st.session_state.is_running and (len(st.session_state.logs) == 0 or "PUT" not in st.session_state.logs[-1]):
-            add_log(f"🔴 СИГНАЛ: PUT на {st.session_state.selected_asset} | Цена: {current_price} | RSI: {current_rsi}")
-            
+            add_log(f"🔴 СИГНАЛ ЗА ПЕЧАЛБА: PUT на {st.session_state.selected_asset} при цена {st.session_state.current_price} [Фрейм: {selected_tf}]")
     else:
-        decision_text = "НЕ ТЪРГУВАЙ! ⚠️ (Линиите са оплетени или трендът губи инерция)"
+        decision_text = "НЕ ТЪРКУВАЙ! ⚠️ (Пазарна консолидация / Флат)"
         decision_color = "#ffa500"
 
-# Блок 1: Голям визуален черен панел за РЕШЕНИЕТО
+# Блок 1: Визуален прозорец за РЕШЕНИЕТО
 st.markdown(f"""
     <div style="background-color:#11141a; padding:25px; border-radius:10px; border-left: 10px solid {decision_color}; text-align:center;">
-        <h2 style="color:#aaaaaa; margin:0; font-size:14px; letter-spacing: 1px;">АНАЛИЗИРАН ИНСТРУМЕНТ В МОМЕНТА: <span style="color:#ffffff; font-weight:bold;">{st.session_state.selected_asset}</span></h2>
+        <h2 style="color:#aaaaaa; margin:0; font-size:14px; letter-spacing: 1px;">ТЕКУЩ АКТИВ ЗА ТЪРГОВИЯ: <span style="color:#ffffff; font-weight:bold;">{st.session_state.selected_asset}</span></h2>
         <hr style="border: 0; border-top: 1px solid #2b303c; margin: 15px 0;">
-        <h2 style="color:#aaaaaa; margin:0; font-size:16px; letter-spacing: 1px;">ПРЕЦИЗЕН АНАЛИЗ ЗА ВХОД (ФИКСИРАН: 1 МИН):</h2>
+        <h2 style="color:#aaaaaa; margin:0; font-size:16px; letter-spacing: 1px;">АКТИВЕН АНАЛИЗ ЗА ВХОД (ВРЕМЕВА РАМКА: {selected_tf.upper()} - {tf_description}):</h2>
         <h1 style="color:{decision_color}; margin:15px 0 0 0; font-size:36px; font-weight:bold;">{decision_text}</h1>
     </div>
 """, unsafe_allow_html=True)
 
-
-# --- 🎯 СЕКЦИЯ: ЦЕНТРАЛНИ БУТОНИ ЗА СТАРТ / СТОП НА БОТА 🎯 ---
 st.write("")
-center_col1, center_col2, center_col3 = st.columns([1, 2, 1])  # Използваме колони, за да го центрираме перфектно
 
-with center_col2:
-    if not st.session_state.is_running:
-        if st.button("🚀 СТАРТИРАЙ АВТОМАТИЧЕН БОТ (1 МИН)", use_container_width=True, type="primary"):
-            if fast_p >= mid_p or mid_p >= slow_p:
-                st.error("Грешка: Подредбата на периодите трябва да е Бърза < Средна < Бавна!")
-            else:
-                st.session_state.is_running = True
-                st.session_state.start_price = st.session_state.current_price
-                add_log(f"СТАРТ: {st.session_state.selected_asset} | Интервал: 1 min | Фиксирана базова цена: {st.session_state.start_price}")
-                st.rerun()
-    else:
-        if st.button("🛑 СПРИ АВТОМАТИЧНИЯ БОТ", use_container_width=True):
-            st.session_state.is_running = False
-            add_log("СТОП: Анализаторът е изключен от потребителя.")
-            st.rerun()
-
-
-# --- ⏱️ СЕКЦИЯ: ИЗЧИСТЕН ЦИФРОВ ТАЙМЕР ЗА ВРЕМЕВИ РАМКИ ⏱️ ---
+# --- ⏱ СЕКЦИЯ: ИЗЧИСТЕН ЦИФРОВ ТАЙМЕР ⏱ ---
 timer_placeholder = st.empty()
 
-# Блок 2: Метрики с данни в реално време
-col1, col2, col3, col4 = st.columns(4)
+# Блок 2: Метрики
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.metric(label=f"Текуща Цена ({st.session_state.selected_asset.split()[0]})", value=f"{st.session_state.current_price:.5f}")
-
-with col2:
-    denom = st.session_state.start_price if st.session_state.start_price != 0 else 1.1234
-    pct_change = ((st.session_state.current_price - st.session_state.start_price) / denom) * 100
-    st.metric(label="Промяна на сесията", value=f"{pct_change:.3f}%", delta=f"{pct_change:.3f}%")
-
-with col3:
-    st.metric(label=f"EMA ({fast_p}/{mid_p}/{slow_p})", value=f"{ema_fast} | {ema_mid} | {ema_slow}")
-
-with col4:
-    rsi_status = "Пазарът е стабилен ✅" if 32 < current_rsi < 68 else "Рискова зона (Екстремум) ⚠️"
-    st.metric(label=f"RSI ({rsi_p}) Филтър", value=f"{current_rsi}", delta=rsi_status, delta_color="normal" if "Стабилен" in rsi_status else "inverse")
-
-# Блок 3: Терминал / Журнал
-st.subheader("📝 Терминал за засичане на сигнали")
-log_text = "\n".join(st.session_state.logs[::-1])
-st.text_area(label="", value=log_text, height=150, disabled=True)
-
-# --- АВТОМАТИЧНО ПРЕЗАРЕЖДАНЕ И СИНХРОНИЗИРАН ТАЙМЕР (60 СЕКУНДИ) ---
-if st.session_state.is_running:
-    total_seconds = 60  
-    start_time = time.time()
-    
-    while True:
-        elapsed = time.time() - start_time
