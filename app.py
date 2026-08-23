@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Инжектиране на ССS стилове за компактни бутони и цветово кодиране
+# Инжектиране на CSS стилове за компактни бутони и цветово кодиране
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
@@ -70,7 +70,6 @@ def generate_fresh_history(asset_name):
         base_price = 1.1234
         
     history = []
-    # Пазим до 120 свещи за дълбочина при изчисляването на по-бавни ЕМА
     for _ in range(120):
         if base_price > 1000: step = 0.50
         elif base_price > 100: step = 0.10
