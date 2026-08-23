@@ -111,6 +111,7 @@ required_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
 remaining_seconds = max(0, required_seconds - elapsed_seconds)
 
+# Проверка за изтекла свещ
 if st.session_state.is_running and remaining_seconds == 0:
     tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
     mult = tf_multiplier.get(selected_tf, 1.0)
@@ -153,52 +154,49 @@ if ema_fast and ema_mid and ema_slow:
         decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Консолидация)"
         decision_color = "#ffa500"
 
-# --- ЛАЙВ ДАШБОРД ФРАГМЕНТ ---
-@st.fragment(run_every=1.0)
-def render_live_dashboard():
-    # Горна инфо линия
-    c1, c2 = st.columns(2)
-    current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
-    c1.markdown(f"🤖 **PO Terminal** | Актив: `{st.session_state.selected_asset}`")
-    c2.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
-    
-    # Решение
-    st.markdown(f"""
-        <div style="background-color:#11141a; padding:8px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 5px;">
-            <h1 style="color:{decision_color}; margin:0; font-size:22px; font-weight:bold;">{decision_text}</h1>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # ФИКСИРАНО: Олекотена пазарна графика (Използваме st.line_chart директно по правилен начин)
-    chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-30:]})
-    st.line_chart(chart_df, height=120, use_container_width=True)
-    
-    # Контроли (Падащо меню и Таймер)
-    col_menu, col_timer = st.columns(2)
-    
-    try:
-        current_index = all_otc_assets.index(st.session_state.selected_asset)
-    except ValueError:
-        current_index = 0
-        
-    with col_menu:
-        chosen_asset = st.selectbox("Избор на актив:", all_otc_assets, index=current_index, disabled=st.session_state.is_running, label_visibility="collapsed", key="asset_select_box")
-        
-    rem_sec = max(0, required_seconds - int(time.time() - st.session_state.last_tick_time))
-    
-    with col_timer:
-        if st.session_state.is_running:
-            mins, secs = rem_sec // 60, rem_sec % 60
-            st.markdown(f"<div style='text-align: right; font-size: 14px; margin-top: 4px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div style='text-align: right; color: #888; margin-top: 4px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
+# --- ПОКАЗВАНЕ НА ИНТЕРФЕЙСА НА ЕКРАНА (БЕЗ ГРЕШНИ ОТСТЪПИ) ---
+c1, c2 = st.columns(2)
+current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
+c1.markdown(f"🤖 **PO Terminal** | Актив: `{st.session_state.selected_asset}`")
+c2.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
 
-    # Логика за засичане на промени
-    if chosen_asset != st.session_state.selected_asset:
-        st.session_state.selected_asset = chosen_asset
-        st.session_state.price_history = generate_fresh_history(chosen_asset)
-        st.session_state.current_price = st.session_state.price_history[-1]
-        st.session_state.start_price = st.session_state.price_history[-1]
-        st.rerun() # ФИКСИРАНО: Премахнато грешното дублиране st.st.rerun()
-        
-    if st.session_state.is_running and rem_sec == 0:
+st.markdown(f"""
+    <div style="background-color:#11141a; padding:8px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 5px;">
+        <h1 style="color:{decision_color}; margin:0; font-size:22px; font-weight:bold;">{decision_text}</h1>
+    </div>
+""", unsafe_allow_html=True)
+
+chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-30:]})
+st.line_chart(chart_df, height=120, use_container_width=True)
+
+col_menu, col_timer = st.columns(2)
+
+try:
+    current_index = all_otc_assets.index(st.session_state.selected_asset)
+except ValueError:
+    current_index = 0
+    
+with col_menu:
+    chosen_asset = st.selectbox("Избор на актив:", all_otc_assets, index=current_index, disabled=st.session_state.is_running, label_visibility="collapsed", key="asset_select_box")
+
+with col_timer:
+    if st.session_state.is_running:
+        mins, secs = remaining_seconds // 60, remaining_seconds % 60
+        st.markdown(f"<div style='text-align: right; font-size: 14px; margin-top: 4px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<div style='text-align: right; color: #888; margin-top: 4px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
+
+# Логика за смяна на актива
+if chosen_asset != st.session_state.selected_asset:
+    st.session_state.selected_asset = chosen_asset
+    st.session_state.price_history = generate_fresh_history(chosen_asset)
+    st.session_state.current_price = st.session_state.price_history[-1]
+    st.session_state.start_price = st.session_state.price_history[-1]
+    st.rerun()
+
+m1, m2, m3 = st.columns(3)
+decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "TRY"]) else 5
+denom = st.session_state.start_price if st.session_state.start_price != 0 else 1.1234
+pct_change = ((st.session_state.current_price - st.session_state.start_price) / denom) * 100
+
+m1.metric(label="Текуща Цена", value=f"{st.session_state.current_price:.{decimals}f}")
