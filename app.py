@@ -22,7 +22,6 @@ st.markdown("""
     .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
     h1 { font-size: 20px !important; margin: 0px !important; padding: 0px !important; }
     h5 { font-size: 12px !important; margin: 2px 0px !important; }
-    iframe { height: 0px !important; } /* Скрива излишни HTML контейнери */
     .stSelectbox, .stButton, .stNumberInput { margin-bottom: 0px !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -80,7 +79,7 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-# --- РЕД 1: ХОРИЗОНТАЛНА КОНФИГУРАЦИЯ (СПЕСТЯВА МЯСТОТО ОТ СТРАНИЧНИЯ ПАНЕЛ) ---
+# --- РЕД 1: ХОРИЗОНТАЛНА КОНФИГУРАЦИЯ ---
 cfg_col1, cfg_col2, cfg_col3, cfg_col4, cfg_col5, cfg_col6 = st.columns([1.5, 1, 1, 1, 1.5, 1.5])
 
 timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
@@ -95,7 +94,6 @@ fast_p = cfg_col2.number_input("F:", min_value=2, max_value=50, value=default_fa
 mid_p = cfg_col3.number_input("M:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running, label_visibility="collapsed")
 slow_p = cfg_col4.number_input("S:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running, label_visibility="collapsed")
 
-# Старт / Стоп бутони
 if not st.session_state.is_running:
     if cfg_col5.button("🚀 СТАРТ", use_container_width=True):
         st.session_state.is_running = True
@@ -155,7 +153,7 @@ if ema_fast and ema_mid and ema_slow:
         decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Консолидация)"
         decision_color = "#ffa500"
 
-# --- ЛАЙВ ДАШБОРД ФРАГМЕНТ (ОПТИМИЗИРАН ЗА 1 ЕКРАН) ---
+# --- ЛАЙВ ДАШБОРД ФРАГМЕНТ ---
 @st.fragment(run_every=1.0)
 def render_live_dashboard():
     # Горна инфо линия
@@ -164,18 +162,18 @@ def render_live_dashboard():
     c1.markdown(f"🤖 **PO Terminal** | Актив: `{st.session_state.selected_asset}`")
     c2.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
     
-    # Решение (Намален padding за по-ниска височина)
+    # Решение
     st.markdown(f"""
         <div style="background-color:#11141a; padding:8px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 5px;">
             <h1 style="color:{decision_color}; margin:0; font-size:22px; font-weight:bold;">{decision_text}</h1>
         </div>
     """, unsafe_allow_html=True)
     
-    # Пазарна графика (Ултра-компактна - 100px височина)
+    # ФИКСИРАНО: Олекотена пазарна графика (Използваме st.line_chart директно по правилен начин)
     chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-30:]})
-    st.line_chart(chart_df, height=100, use_container_width=True)
+    st.line_chart(chart_df, height=120, use_container_width=True)
     
-    # Контроли (Падащо меню и Таймер на един ред веднага под графиката)
+    # Контроли (Падащо меню и Таймер)
     col_menu, col_timer = st.columns(2)
     
     try:
@@ -200,3 +198,7 @@ def render_live_dashboard():
         st.session_state.selected_asset = chosen_asset
         st.session_state.price_history = generate_fresh_history(chosen_asset)
         st.session_state.current_price = st.session_state.price_history[-1]
+        st.session_state.start_price = st.session_state.price_history[-1]
+        st.rerun() # ФИКСИРАНО: Премахнато грешното дублиране st.st.rerun()
+        
+    if st.session_state.is_running and rem_sec == 0:
