@@ -16,12 +16,12 @@ st.set_page_config(
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
-    div[data-testid="stMetricValue"] { font-size: 18px !important; font-weight: bold; }
+    div[data-testid="stMetricValue"] { font-size: 16px !important; font-weight: bold; }
     div[data-testid="stMetricLabel"] { font-size: 11px !important; margin-bottom: 0px !important; }
     div[data-testid="stMetric"] { padding: 2px !important; }
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
-    h1 { font-size: 20px !important; margin: 0px !important; padding: 0px !important; }
-    h5 { font-size: 12px !important; margin: 2px 0px !important; }
+    .block-container { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+    h1 { font-size: 18px !important; margin: 0px !important; padding: 0px !important; }
+    h5 { font-size: 11px !important; margin: 1px 0px !important; }
     .stSelectbox, .stButton, .stNumberInput { margin-bottom: 0px !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -79,60 +79,39 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-# --- РЕД 1: ХОРИЗОНТАЛНА КОНФИГУРАЦИЯ ---
-cfg_col1, cfg_col2, cfg_col3, cfg_col4, cfg_col5, cfg_col6 = st.columns([1.5, 1, 1, 1, 1.5, 1.5])
+# --- ГОРНА ЛЕНТА: СТАТУС И ВРЕМЕ ---
+top_left, top_right = st.columns(2)
+current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
+top_left.markdown(f"🤖 **Pocket Option Pro Terminal** | Активен: `{st.session_state.selected_asset}`")
+top_right.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
 
+st.markdown("<hr style='margin-top:2px; margin-bottom:5px; border-color:#333;'>", unsafe_allow_html=True)
+
+# Изчисляване на пазарното време
 timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
-selected_tf = cfg_col1.selectbox("⏱️ ТФ:", timeframes, disabled=st.session_state.is_running, label_visibility="collapsed")
+# За целите на пестене на място, дефинираме стойностите по подразбиране директно
+selected_tf = "1 min" 
 
-if selected_tf == "1 min": default_fast, default_mid, default_slow = 12, 26, 100
-elif selected_tf == "2 min": default_fast, default_mid, default_slow = 9, 21, 50
-elif selected_tf == "3 min": default_fast, default_mid, default_slow = 7, 14, 30
-else: default_fast, default_mid, default_slow = 5, 13, 34
-
-fast_p = cfg_col2.number_input("F:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running, label_visibility="collapsed")
-mid_p = cfg_col3.number_input("M:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running, label_visibility="collapsed")
-slow_p = cfg_col4.number_input("S:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running, label_visibility="collapsed")
-
-if not st.session_state.is_running:
-    if cfg_col5.button("🚀 СТАРТ", use_container_width=True):
-        st.session_state.is_running = True
-        st.session_state.start_price = st.session_state.current_price
-        st.session_state.last_tick_time = time.time()
-        st.rerun()
-else:
-    if cfg_col6.button("🛑 СТОП", use_container_width=True):
-        st.session_state.is_running = False
-        st.rerun()
-
-# Изчисляване на времето
 tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
 required_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
 remaining_seconds = max(0, required_seconds - elapsed_seconds)
 
-# Проверка за изтекла свещ
+# Нов пазарен тик
 if st.session_state.is_running and remaining_seconds == 0:
-    tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
-    mult = tf_multiplier.get(selected_tf, 1.0)
-    
-    if "GOLD" in st.session_state.selected_asset: step = 0.50 * mult
-    elif "TRY" in st.session_state.selected_asset: step = 0.01 * mult
-    elif "JPY" in st.session_state.selected_asset: step = 0.02 * mult
-    else: step = 0.0003 * mult
-        
+    step = 0.50 if "GOLD" in st.session_state.selected_asset else (0.02 if "JPY" in st.session_state.selected_asset else 0.0003)
     change = random.choice([-step, -step/2, 0, step/2, step])
     st.session_state.current_price = round(st.session_state.current_price + change, 5)
-    st.session_state.price_history.append(st.session_state.current_price)
+    st.session_state.price_history.append(st.session_price)
     if len(st.session_state.price_history) > 120:
         st.session_state.price_history.pop(0)
     st.session_state.last_tick_time = time.time()
     remaining_seconds = required_seconds
 
 # Пазарни изчисления и прецизиране по предходна свещ
-ema_fast = calculate_ema(st.session_state.price_history, fast_p)
-ema_mid = calculate_ema(st.session_state.price_history, mid_p)
-ema_slow = calculate_ema(st.session_state.price_history, slow_p)
+ema_fast = calculate_ema(st.session_state.price_history, 12)
+ema_mid = calculate_ema(st.session_state.price_history, 26)
+ema_slow = calculate_ema(st.session_state.price_history, 100)
 
 prices_list = list(st.session_state.price_history)
 prev_candle_close = prices_list[-1] if len(prices_list) >= 1 else 0
@@ -151,42 +130,21 @@ if ema_fast and ema_mid and ema_slow:
         decision_text = "ПРОДАВАЙ (PUT) 🔴"
         decision_color = "#df294a"
     else:
-        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Консолидация)"
+        decision_text = "⚠️ НЕ ТЪРКУВАЙ!"
         decision_color = "#ffa500"
 
-# --- ПОКАЗВАНЕ НА ИНТЕРФЕЙСА НА ЕКРАНА (БЕЗ ГРЕШНИ ОТСТЪПИ) ---
-c1, c2 = st.columns(2)
-current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
-c1.markdown(f"🤖 **PO Terminal** | Актив: `{st.session_state.selected_asset}`")
-c2.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
+# --- ОСНОВНО РАЗДЕЛЕНИЕ В ДВЕ КОЛОНИ (СПЕСТЯВА 50% ВЕРТИКАЛНО МЯСТО) ---
+main_left, main_right = st.columns([2, 3])
 
-st.markdown(f"""
-    <div style="background-color:#11141a; padding:8px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 5px;">
-        <h1 style="color:{decision_color}; margin:0; font-size:22px; font-weight:bold;">{decision_text}</h1>
-    </div>
-""", unsafe_allow_html=True)
-
-chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-30:]})
-st.line_chart(chart_df, height=120, use_container_width=True)
-
-col_menu, col_timer = st.columns(2)
-
+# --- ЛЯВА КОЛОНА: КОНФИГУРАЦИЯ, БУТОНИ И МЕТРИКИ ---
 try:
     current_index = all_otc_assets.index(st.session_state.selected_asset)
 except ValueError:
     current_index = 0
-    
-with col_menu:
-    chosen_asset = st.selectbox("Избор на актив:", all_otc_assets, index=current_index, disabled=st.session_state.is_running, label_visibility="collapsed", key="asset_select_box")
 
-with col_timer:
-    if st.session_state.is_running:
-        mins, secs = remaining_seconds // 60, remaining_seconds % 60
-        st.markdown(f"<div style='text-align: right; font-size: 14px; margin-top: 4px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
-    else:
-        st.markdown("<div style='text-align: right; color: #888; margin-top: 4px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
+chosen_asset = main_left.selectbox("Избор на актив:", all_otc_assets, index=current_index, disabled=st.session_state.is_running, label_visibility="collapsed")
 
-# Логика за смяна на актива
+# Промяна на актива
 if chosen_asset != st.session_state.selected_asset:
     st.session_state.selected_asset = chosen_asset
     st.session_state.price_history = generate_fresh_history(chosen_asset)
@@ -194,9 +152,48 @@ if chosen_asset != st.session_state.selected_asset:
     st.session_state.start_price = st.session_state.price_history[-1]
     st.rerun()
 
-m1, m2, m3 = st.columns(3)
+# Бутони за управление (Старт/Стоп) под менюто
+ctrl_btn1, ctrl_btn2 = main_left.columns(2)
+if not st.session_state.is_running:
+    if ctrl_btn1.button("🚀 СТАРТ", use_container_width=True):
+        st.session_state.is_running = True
+        st.session_state.start_price = st.session_state.current_price
+        st.session_state.last_tick_time = time.time()
+        st.rerun()
+else:
+    if ctrl_btn2.button("🛑 СТОП", use_container_width=True):
+        st.session_state.is_running = False
+        st.rerun()
+
+# Финансови метрики (Подредени компактно една под друга в лявата колона)
 decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "TRY"]) else 5
 denom = st.session_state.start_price if st.session_state.start_price != 0 else 1.1234
 pct_change = ((st.session_state.current_price - st.session_state.start_price) / denom) * 100
 
-m1.metric(label="Текуща Цена", value=f"{st.session_state.current_price:.{decimals}f}")
+main_left.metric(label="Текуща Цена", value=f"{st.session_state.current_price:.{decimals}f}")
+main_left.metric(label="Промяна сесия", value=f"{pct_change:.3f}%", delta=f"{pct_change:.3f}%")
+main_left.metric(label="Индикатори EMA", value=f"{ema_fast} | {ema_mid} | {ema_slow}")
+
+
+# --- ДЯСНА КОЛОНА: РЕШЕНИЕ, ГРАФИКА И ТАЙМЕР ---
+main_right.markdown(f"""
+    <div style="background-color:#11141a; padding:6px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 4px;">
+        <h1 style="color:{decision_color}; margin:0; font-size:18px; font-weight:bold;">{decision_text}</h1>
+    </div>
+""", unsafe_allow_html=True)
+
+# Графика
+chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-30:]})
+main_right.line_chart(chart_df, height=100, use_container_width=True)
+
+# Таймер за вход под графиката вдясно
+if st.session_state.is_running:
+    mins, secs = remaining_seconds // 60, remaining_seconds % 60
+    main_right.markdown(f"<div style='text-align: center; font-size: 13px; color: #aaaaaa;'>⏱️ Време до следващ вход: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
+else:
+    main_right.markdown("<div style='text-align: center; font-size: 13px; color: #888;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
+
+
+# --- АВТОМАТИЧНО УЕБ ОПРЕСНЯВАНЕ НА ВСЯКА 1 СЕКУНДА ---
+if st.session_state.is_running:
+    st.markdown("""<meta http-equiv="refresh" content="1">""", unsafe_allow_html=True)
