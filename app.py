@@ -6,23 +6,59 @@ from datetime import datetime
 
 # Настройка на уеб страницата
 st.set_page_config(
-    page_title="Pocket Option 3 EMA Bot",
-    page_icon="🤖",
+    page_title="Pocket Option Pro Terminal",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Компактни CSS стилове за изравняване
+# Модерен Неонов CSS дизайн за уеб терминала
 st.markdown("""
     <style>
-    .main { background-color: #1c1f26; }
-    div[data-testid="stMetricValue"] { font-size: 18px !important; font-weight: bold; }
-    div[data-testid="stMetricLabel"] { font-size: 11px !important; margin-bottom: 0px !important; }
-    div[data-testid="stMetric"] { padding: 2px !important; }
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
-    h1 { font-size: 22px !important; margin: 0px !important; padding: 0px !important; }
-    h5 { font-size: 12px !important; margin: 2px 0px !important; }
-    .stSelectbox, .stButton, .stNumberInput { margin-bottom: 0px !important; }
+    /* Тон на основната платформа */
+    .main { background-color: #0b0e14; }
+    
+    /* Стилизиране на страничната лента */
+    [data-testid="stSidebar"] {
+        background-color: #11151f !important;
+        border-right: 1px solid #1f2635;
+    }
+    
+    /* Премиум контейнери (Карти) */
+    .trading-card {
+        background: #11151f;
+        border: 1px solid #1f2635;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    /* Ефектни заглавия */
+    .terminal-title {
+        color: #ffffff;
+        font-family: 'Arial', sans-serif;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        margin: 0px !important;
+    }
+    
+    /* Стилизиране на вградените Streamlit метрики */
+    div[data-testid="stMetricValue"] {
+        font-family: 'Courier New', monospace !important;
+        font-size: 22px !important;
+        font-weight: bold !important;
+        color: #e2e8f0 !important;
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 11px !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #94a3b8 !important;
+    }
+    
+    /* Премахване на излишните отстъпи */
+    .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -79,40 +115,42 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-# --- СТРАНИЧЕН ПАНЕЛ (SIDEBAR) ---
-st.sidebar.title("⚙️ Настройки на Бота")
+# --- SIDEBAR НАСТРОЙКИ ---
+st.sidebar.markdown("<h2 style='color:#ffffff; font-size:20px; font-weight:bold; margin-bottom:5px;'>⚙️ КОНФИГУРАЦИЯ</h2>", unsafe_allow_html=True)
 timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
-selected_tf = st.sidebar.selectbox("⏱️ Времева рамка за анализ:", timeframes, disabled=st.session_state.is_running)
+selected_tf = st.sidebar.selectbox("⏱️ Графичен Таймфрейм:", timeframes, disabled=st.session_state.is_running)
 
 if selected_tf == "1 min": default_fast, default_mid, default_slow = 12, 26, 100
 elif selected_tf == "2 min": default_fast, default_mid, default_slow = 9, 21, 50
 elif selected_tf == "3 min": default_fast, default_mid, default_slow = 7, 14, 30
 else: default_fast, default_mid, default_slow = 5, 13, 34
 
-fast_p = st.sidebar.number_input("Бърза EMA:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running)
-mid_p = st.sidebar.number_input("Средна EMA:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running)
-slow_p = st.sidebar.number_input("Бавна EMA:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running)
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
+fast_p = st.sidebar.number_input("⚡ Бърза EMA период:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running)
+mid_p = st.sidebar.number_input("📊 Средна EMA период:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running)
+slow_p = st.sidebar.number_input("🐢 Бавна EMA период:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running)
 
-st.sidebar.markdown("---")
+st.sidebar.markdown("<hr style='border-color:#232a38;'>", unsafe_allow_html=True)
 
+# Управление на сесията
 if not st.session_state.is_running:
-    if st.sidebar.button("🚀 СТАРТИРАЙ БОТ", use_container_width=True):
+    if st.sidebar.button("🚀 СТАРТИРАЙ АНАЛИЗА", use_container_width=True, type="primary"):
         st.session_state.is_running = True
         st.session_state.start_price = st.session_state.current_price
         st.session_state.last_tick_time = time.time()
         st.rerun()
 else:
-    if st.sidebar.button("🛑 СПРИ БОТ", use_container_width=True):
+    if st.sidebar.button("🛑 СПРИ ТЕРМИНАЛА", use_container_width=True):
         st.session_state.is_running = False
         st.rerun()
 
-# Изчисляване на пазарния таймер
+# Изчисляване на времевия цикъл
 tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
 required_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
 remaining_seconds = max(0, required_seconds - elapsed_seconds)
 
-# Логика за смяна на свещта при изтичане на времето
+# Нов пазарен тик при затваряне на свещта
 if st.session_state.is_running and remaining_seconds == 0:
     tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
     mult = tf_multiplier.get(selected_tf, 1.0)
@@ -143,65 +181,52 @@ is_prev_candle_bullish = prev_candle_close > prev_candle_open
 is_prev_candle_bearish = prev_candle_close < prev_candle_open
 
 decision_text = "ИЗЧАКВАНЕ НА СИГНАЛ ⏳"
-decision_color = "gray"
+decision_color = "#94a3b8"
+glow_effect = "rgba(148,163,184,0.15)"
 
 if ema_fast and ema_mid and ema_slow:
     if (ema_fast > ema_mid > ema_slow) and is_prev_candle_bullish:
-        decision_text = "КУПУВАЙ (CALL) 🟢"
+        decision_text = "КУПУВАЙ (CALL / HIGHER) 🟢"
         decision_color = "#2ebd85"
+        glow_effect = "rgba(46,189,133,0.25)"
     elif (ema_fast < ema_mid < ema_slow) and is_prev_candle_bearish:
-        decision_text = "ПРОДАВАЙ (PUT) 🔴"
+        decision_text = "ПРОДАВАЙ (PUT / LOWER) 🔴"
         decision_color = "#df294a"
+        glow_effect = "rgba(223,41,74,0.25)"
     else:
-        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация / Филтриран шум)"
+        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация)"
         decision_color = "#ffa500"
+        glow_effect = "rgba(255,165,0,0.15)"
 
-# --- ОСНОВЕН ДЕКСТУП ПАНЕЛ (ВИЗУАЛИЗИРА СЕ ВЕДНАГА) ---
-c1, c2 = st.columns(2)
-current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
-c1.markdown(f"🤖 **Pocket Option Pro Terminal** | Актив: `{st.session_state.selected_asset}`")
-c2.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
+# --- ГОРЕН РЕД: ИНФО И ЖИВ ЧАСОВНИК ЧРЕЗ JAVASCRIPT ---
+top_c1, top_c2 = st.columns(2)
+with top_c1:
+    st.markdown(f"<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-# Прозорец за решението
+# ⏳ ИНТЕЛЕГЕНТЕН JAVASCRIPT ЧАСОВНИК СЪС СЕКУНДАРНИК ⏳
+with top_c2:
+    st.markdown("""
+        <div id="live-clock" style="text-align: right; color: #38bdf8; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(56,189,248,0.3); padding-top: 5px;">
+            Зареждане на системно време...
+        </div>
+        <script>
+        function updateClock() {
+            var now = new Date();
+            var d = String(now.getDate()).padStart(2, '0');
+            var m = String(now.getMonth() + 1).padStart(2, '0');
+            var y = now.getFullYear();
+            var hrs = String(now.getHours()).padStart(2, '0');
+            var mins = String(now.getMinutes()).padStart(2, '0');
+            var secs = String(now.getSeconds()).padStart(2, '0');
+            
+            document.getElementById('live-clock').innerHTML = "🕒 " + d + "." + m + "." + y + " | " + hrs + ":" + mins + ":" + secs;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+        </script>
+    """, unsafe_allow_html=True)
+
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
+# --- ОСНОВЕН ДАШБОРД (ТРЕЙДИНГ БОКС) ---
 st.markdown(f"""
-    <div style="background-color:#11141a; padding:12px; border-radius:4px; border-left: 6px solid {decision_color}; text-align:center; margin-bottom: 5px;">
-        <h1 style="color:{decision_color}; margin:0; font-size:22px; font-weight:bold;">{decision_text}</h1>
-    </div>
-""", unsafe_allow_html=True)
-
-# Пазарна графика
-chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-35:]})
-st.line_chart(chart_df, height=120, use_container_width=True)
-
-# Падащо меню и Таймер (Позиционирани под графиката)
-col_menu, col_timer = st.columns(2)
-
-try:
-    current_index = all_otc_assets.index(st.session_state.selected_asset)
-except ValueError:
-    current_index = 0
-    
-with col_menu:
-    chosen_asset = st.selectbox("Избор на актив:", all_otc_assets, index=current_index, disabled=st.session_state.is_running, label_visibility="collapsed", key="asset_select_box")
-
-with col_timer:
-    if st.session_state.is_running:
-        mins, secs = remaining_seconds // 60, remaining_seconds % 60
-        st.markdown(f"<div style='text-align: right; font-size: 14px; margin-top: 4px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
-    else:
-        st.markdown("<div style='text-align: right; color: #888; margin-top: 4px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
-
-# Логика за смяна на актива при избор
-if chosen_asset != st.session_state.selected_asset:
-    st.session_state.selected_asset = chosen_asset
-    st.session_state.price_history = generate_fresh_history(chosen_asset)
-    st.session_state.current_price = st.session_state.price_history[-1]
-    st.session_state.start_price = st.session_state.price_history[-1]
-    st.rerun()
-
-# Финансови метрики (Долен ред)
-m1, m2, m3 = st.columns(3)
-decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "TRY"]) else 5
-denom = st.session_state.start_price if st.session_state.start_price != 0 else 1.1234
-pct_change = ((st.session_state.current_price - st.session_state.start_price) / denom) * 100
-
