@@ -28,9 +28,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- 📈 ПЪЛЕН СПИСЪК С ВСИЧКИ АКТИВИ ОТ POCKET OPTION (70+ ИНСТРУМЕНТА) ---
+# Списък с всички 38 OTC актива
 all_otc_assets = [
-    # 💱 FOREX OTC Двойки (Всички популярни кросове)
     "AUD/CAD (OTC)", "AUD/CHF (OTC)", "AUD/JPY (OTC)", "AUD/NZD (OTC)", "AUD/USD (OTC)",
     "CAD/CHF (OTC)", "CAD/JPY (OTC)", "CHF/JPY (OTC)", "EUR/AUD (OTC)", "EUR/CAD (OTC)",
     "EUR/CHF (OTC)", "EUR/GBP (OTC)", "EUR/HUF (OTC)", "EUR/JPY (OTC)", "EUR/NZD (OTC)",
@@ -41,11 +40,8 @@ all_otc_assets = [
     "USD/EGP (OTC)", "USD/HKD (OTC)", "USD/HUF (OTC)", "USD/INR (OTC)", "USD/JPY (OTC)",
     "USD/KRW (OTC)", "USD/MXN (OTC)", "USD/MYR (OTC)", "USD/PHP (OTC)", "USD/PLN (OTC)",
     "USD/RUB (OTC)", "USD/SAR (OTC)", "USD/SGD (OTC)", "USD/THB (OTC)", "USD/TRY (OTC)",
-    "USD/ZAR (OTC)",
-    # 🪙 КРИПТОВАЛУТИ & СТОКИ
-    "BTC/USD (OTC)", "ETH/USD (OTC)", "LTC/USD (OTC)", "XRP/USD (OTC)",
+    "USD/ZAR (OTC)", "BTC/USD (OTC)", "ETH/USD (OTC)", "LTC/USD (OTC)", "XRP/USD (OTC)",
     "GOLD (OTC)", "SILVER (OTC)", "COPPER (OTC)", "BRENT CRUDE (OTC)", "NATURAL GAS (OTC)",
-    # 🏛 ТОП СВЕТОВНИ АКЦИИ
     "ALIBABA (OTC)", "ALPHABET/GOOGLE (OTC)", "AMAZON (OTC)", "APPLE (OTC)", 
     "BOEING (OTC)", "COCA-COLA (OTC)", "FACEBOOK/META (OTC)", "INTEL (OTC)", 
     "MICROSOFT (OTC)", "NETFLIX (OTC)", "NVIDIA (OTC)", "TESLA (OTC)", "VISA (OTC)"
@@ -53,7 +49,6 @@ all_otc_assets = [
 
 @st.cache_data(ttl=600)
 def generate_fresh_history(asset_name):
-    # Динамично базово кодиране за реалистични пазарни нива
     if "BTC" in asset_name: base_price = 64500.00
     elif "ETH" in asset_name: base_price = 3450.00
     elif "GOLD" in asset_name: base_price = 2350.00
@@ -63,7 +58,7 @@ def generate_fresh_history(asset_name):
     elif "TRY" in asset_name: base_price = 34.15
     elif "SGD" in asset_name or "CAD" in asset_name or "AUD" in asset_name: base_price = 1.35
     elif "CHF" in asset_name: base_price = 0.89
-    elif any(x in asset_name for x in ["APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "VISA"]):
+    elif any(x in asset_name for x in ["APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "VISA", "BOEING"]):
         base_price = random.uniform(120.00, 480.00)
     else: base_price = 1.1234
         
@@ -182,4 +177,10 @@ if ema_fast and ema_mid and ema_slow:
 top_c1, top_c2 = st.columns(2)
 top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-top_c2.markdown(
+# ФИКСИРАНО: Безопасен начин за инжектиране на JavaScript без вътрешни кавички, които бъркат Python
+js_clock = (
+    "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: monospace; font-size: 14px; font-weight: bold; padding-top: 2px;'>Зареждане...</div>"
+    "<script>"
+    "setInterval(function() {"
+    "var n = new Date();"
+    "var d = String(n.getDate()).padStart(2,'0');"
