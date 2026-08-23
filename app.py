@@ -12,17 +12,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Агресивен CSS за мащабиране на цялото съдържание в рамките на 1 екран
+# Модерен Неонов CSS дизайн за уеб терминала - Напълно изчистен
 st.markdown(
     "<style>"
     ".main { background-color: #0b0e14; }"
     "[data-testid='stSidebar'] { background-color: #11151f !important; border-right: 1px solid #1f2635; }"
-    /* Свиване на метричните карти по височина */
     "div[data-testid='stMetric'] { background: #11151f !important; border: 1px solid #1f2635 !important; border-radius: 8px !important; padding: 8px 12px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; margin-bottom: 0px !important; }"
     ".terminal-title { color: #ffffff; font-family: 'Arial', sans-serif; font-weight: 800; letter-spacing: 0.5px; margin: 0px !important; font-size: 18px !important; }"
     "div[data-testid='stMetricValue'] { font-family: 'Courier New', monospace !important; font-size: 16px !important; font-weight: bold !important; color: #e2e8f0 !important; }"
     "div[data-testid='stMetricLabel'] { font-size: 10px !important; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8 !important; }"
-    /* Ултра-минималистични контейнерни отстъпи за Streamlit */
     ".block-container { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }"
     "div[data-testid='stHorizontalBlock'] { gap: 8px !important; }"
     ".stSelectbox, .stButton, .stNumberInput { margin-bottom: 0px !important; }"
@@ -83,7 +81,7 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-# --- SIDEBAR НАСТРОЙКИ (ЗАПАЗЕН) ---
+# --- SIDEBAR НАСТРОЙКИ ---
 st.sidebar.markdown("<h2 style='color:#ffffff; font-size:18px; font-weight:bold; margin-bottom:5px;'>⚙️ КОНФИГУРАЦИЯ</h2>", unsafe_allow_html=True)
 timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
 selected_tf = st.sidebar.selectbox("⏱️ Графичен Таймфрейм:", timeframes, disabled=st.session_state.is_running)
@@ -183,8 +181,9 @@ top_c2.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown("<div style='margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
-# --- ОСНОВЕН ДАШБОРД (ТРЕЙДИНГ БОКС - Компактна височина) ---
+# --- ОСНОВЕН ДАШБОРД (ТРЕЙДИНГ БОКС) ---
 st.markdown(
     "<div style='background-color:#11151f; padding:10px 14px; border-radius:6px; border: 1px solid #1f2635; border-left: 8px solid " + decision_color + "; box-shadow: 0 0 15px " + glow_effect + "; text-align:center; margin-bottom: 6px;'>"
+    "<span style='color:#64748b; text-transform: uppercase; font-size:10px; letter-spacing:1px; font-weight:bold;'>Анализиран актив: " + str(st.session_state.selected_asset) + "</span>"
