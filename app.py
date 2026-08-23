@@ -200,10 +200,8 @@ if ema_fast and ema_mid and ema_slow:
 
 # --- ГОРЕН РЕД: ИНФО И ЖИВ ЧАСОВНИК ЧРЕЗ JAVASCRIPT ---
 top_c1, top_c2 = st.columns(2)
-with top_c1:
-    st.markdown(f"<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
+top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-# ⏳ ИНТЕЛЕГЕНТЕН JAVASCRIPT ЧАСОВНИК СЪС СЕКУНДАРНИК ⏳
 with top_c2:
     st.markdown("""
         <div id="live-clock" style="text-align: right; color: #38bdf8; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(56,189,248,0.3); padding-top: 5px;">
