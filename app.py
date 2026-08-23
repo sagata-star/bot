@@ -12,55 +12,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Модерен Неонов CSS дизайн за уеб терминала
-st.markdown("""
-    <style>
-    /* Тон на основната платформа */
-    .main { background-color: #0b0e14; }
-    
-    /* Стилизиране на страничната лента */
-    [data-testid="stSidebar"] {
-        background-color: #11151f !important;
-        border-right: 1px solid #1f2635;
-    }
-    
-    /* Автоматично превръщане на вградените Streamlit метрични контейнери в карти */
-    div[data-testid="stMetric"] {
-        background: #11151f !important;
-        border: 1px solid #1f2635 !important;
-        border-radius: 12px !important;
-        padding: 16px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
-        margin-bottom: 12px !important;
-    }
-    
-    /* Ефектни заглавия */
-    .terminal-title {
-        color: #ffffff;
-        font-family: 'Arial', sans-serif;
-        font-weight: 800;
-        letter-spacing: 0.5px;
-        margin: 0px !important;
-    }
-    
-    /* Стилизиране на вградените Streamlit метрики */
-    div[data-testid="stMetricValue"] {
-        font-family: 'Courier New', monospace !important;
-        font-size: 20px !important;
-        font-weight: bold !important;
-        color: #e2e8f0 !important;
-    }
-    div[data-testid="stMetricLabel"] {
-        font-size: 11px !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #94a3b8 !important;
-    }
-    
-    /* Премахване на излишните отстъпи */
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
-    </style>
-""", unsafe_allow_html=True)
+# Модерен Неонов CSS дизайн за уеб терминала - Капсулиран на едно място
+st.markdown(
+    "<style>"
+    ".main { background-color: #0b0e14; }"
+    "[data-testid='stSidebar'] { background-color: #11151f !important; border-right: 1px solid #1f2635; }"
+    "div[data-testid='stMetric'] { background: #11151f !important; border: 1px solid #1f2635 !important; border-radius: 12px !important; padding: 16px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; margin-bottom: 12px !important; }"
+    ".terminal-title { color: #ffffff; font-family: 'Arial', sans-serif; font-weight: 800; letter-spacing: 0.5px; margin: 0px !important; }"
+    "div[data-testid='stMetricValue'] { font-family: 'Courier New', monospace !important; font-size: 20px !important; font-weight: bold !important; color: #e2e8f0 !important; }"
+    "div[data-testid='stMetricLabel'] { font-size: 11px !important; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8 !important; }"
+    ".block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }"
+    "</style>",
+    unsafe_allow_html=True
+)
 
 # Списък с всички 38 OTC актива
 all_otc_assets = [
@@ -132,7 +96,6 @@ slow_p = st.sidebar.number_input("🐢 Бавна EMA период:", min_value=
 
 st.sidebar.markdown("<hr style='border-color:#232a38;'>", unsafe_allow_html=True)
 
-# Управление на сесията
 if not st.session_state.is_running:
     if st.sidebar.button("🚀 СТАРТИРАЙ АНАЛИЗА", use_container_width=True, type="primary"):
         st.session_state.is_running = True
@@ -150,16 +113,10 @@ required_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
 remaining_seconds = max(0, required_seconds - elapsed_seconds)
 
-# Нов пазарен тик при затваряне на свещта
 if st.session_state.is_running and remaining_seconds == 0:
     tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
     mult = tf_multiplier.get(selected_tf, 1.0)
-    
-    if "GOLD" in st.session_state.selected_asset: step = 0.50 * mult
-    elif "TRY" in st.session_state.selected_asset: step = 0.01 * mult
-    elif "JPY" in st.session_state.selected_asset: step = 0.02 * mult
-    else: step = 0.0003 * mult
-        
+    step = 0.50 * mult if "GOLD" in st.session_state.selected_asset else (0.02 * mult if "JPY" in st.session_state.selected_asset else 0.0003 * mult)
     change = random.choice([-step, -step/2, 0, step/2, step])
     st.session_state.current_price = round(st.session_state.current_price + change, 5)
     st.session_state.price_history.append(st.session_state.current_price)
@@ -198,33 +155,34 @@ if ema_fast and ema_mid and ema_slow:
         decision_color = "#ffa500"
         glow_effect = "rgba(255,165,0,0.15)"
 
-# --- ГОРЕН РЕД: ИНФО И ЖИВ ЧАСОВНИК ЧРЕЗ JAVASCRIPT ---
+# --- ГОРЕН РЕД: ИНФО И ЧАСОВНИК ---
 top_c1, top_c2 = st.columns(2)
 top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-with top_c2:
-    st.markdown("""
-        <div id="live-clock" style="text-align: right; color: #38bdf8; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(56,189,248,0.3); padding-top: 5px;">
-            Зареждане на системно време...
-        </div>
-        <script>
-        function updateClock() {
-            var now = new Date();
-            var d = String(now.getDate()).padStart(2, '0');
-            var m = String(now.getMonth() + 1).padStart(2, '0');
-            var y = now.getFullYear();
-            var hrs = String(now.getHours()).padStart(2, '0');
-            var mins = String(now.getMinutes()).padStart(2, '0');
-            var secs = String(now.getSeconds()).padStart(2, '0');
-            
-            document.getElementById('live-clock').innerHTML = "🕒 " + d + "." + m + "." + y + " | " + hrs + ":" + mins + ":" + secs;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-        </script>
-    """, unsafe_allow_html=True)
-
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+# Жив JavaScript часовник с единични кавички
+top_c2.markdown(
+    "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: \"Courier New\", monospace; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(56,189,248,0.3); padding-top: 5px;'>Зареждане...</div>"
+    "<script>"
+    "function updateClock() {"
+    "var now = new Date();"
+    "var d = String(now.getDate()).padStart(2, '0');"
+    "var m = String(now.getMonth() + 1).padStart(2, '0');"
+    "var y = now.getFullYear();"
+    "var hrs = String(now.getHours()).padStart(2, '0');"
+    "var mins = String(now.getMinutes()).padStart(2, '0');"
+    "var secs = String(now.getSeconds()).padStart(2, '0');"
+    "document.getElementById('live-clock').innerHTML = '🕒 ' + d + '.' + m + '.' + y + ' | ' + hrs + ':' + mins + ':' + secs;"
+    "}"
+    "setInterval(updateClock, 1000);"
+    "updateClock();"
+    "</script>",
+    unsafe_allow_html=True
+)
 
 # --- ОСНОВЕН ДАШБОРД (ТРЕЙДИНГ БОКС) ---
-st.markdown(f"""
+st.markdown(
+    f"<div style='background-color:#11151f; padding:18px; border-radius:10px; border: 1px solid #1f2635; border-left: 10px solid {decision_color}; box-shadow: 0 0 25px {glow_effect}; text-align:center; margin-bottom: 12px;'>"
+    f"<span style='color:#64748b; text-transform: uppercase; font-size:11px; letter-spacing:1.5px; font-weight:bold;'>Анализиран инструмент в реално време</span>"
+    f"<h2 style='color:#ffffff; margin:2px 0; font-size:20px; font-weight:800;'>{st.session_state.selected_asset}</h2>"
+    f"<hr style='border: 0; border-top: 1px solid #1f2635; margin: 10px 0;'>"
+    f"<span style='color:#64748b; text-transform: uppercase; font-size:11px; letter-spacing:1.5px; font-weight:bold;'>Препоръка на 3 EMA Алгоритъма</span>"
