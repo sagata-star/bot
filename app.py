@@ -138,13 +138,12 @@ if st.session_state.is_running and remaining_seconds == 0:
     change = random.choice([-step, -step/2, 0, step/2, step])
     st.session_state.current_price = round(st.session_state.current_price + change, 5)
     st.session_state.price_history.append(st.session_state.current_price)
-    # Свиваме историята до последните 120 записа за висока производителност
     if len(st.session_state.price_history) > 120:
         st.session_state.price_history.pop(0)
     st.session_state.last_tick_time = time.time()
     remaining_seconds = required_seconds
 
-# --- 📅 СЕКЦИЯ: ДАТА И ЧАС СЪС СЕКУНДАРНИК 📅 ---
+# --- 📅 СЕКЦИЯ: ДАТА И ЧАС СЪС СЕКУНДАРНИК ---
 current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
 st.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace; font-size: 14px;'>🕒 Текущо време: {current_datetime}</div>", unsafe_allow_html=True)
 
@@ -180,9 +179,8 @@ st.markdown(f"""
 
 st.write("")
 
-# --- 📊 НОВА СЕКЦИЯ: ОЛЕКОТЕНА ПАЗАРНА ГРАФИКА ЗА АНАЛИЗ В РЕАЛНО ВРЕМЕ 📊 ---
+# --- 📊 СЕКЦИЯ: ОЛЕКОТЕНА ПАЗАРНА ГРАФИКА ЗА АНАЛИЗ В РЕАЛНО ВРЕМЕ ---
 st.write(f"##### 📈 Пазарно движение в реално време за `{st.session_state.selected_asset}`")
-# Превръщаме последните 40 котировки от паметта в DataFrame, за да ги начертаем
 chart_df = pd.DataFrame({
     "Пазарна Цена": list(st.session_state.price_history)[-40:]
 })
@@ -213,8 +211,11 @@ st.markdown("---")
 # --- СЕКЦИЯ: КОМПАКТНИ БУТОНИ ЗА АКТИВИ НАЙ-ОТДОЛУ ---
 st.write("### 🎛️ Смяна на актив (Pocket Option OTC)")
 
-def render_asset_grid(asset_list, num_columns=6):
-    cols = st.columns(num_columns)
-    for idx, asset in enumerate(asset_list):
-        target_col = cols[idx % num_columns]
-        with target_col:
+# Изграждане на решетка за Валутни двойки (6 колони)
+st.write("##### 💱 Валутни двойки (Forex OTC)")
+forex_cols = st.columns(6)
+for idx, asset in enumerate(forex_pairs):
+    target_col = forex_cols[idx % 6]
+    with target_col:
+        is_active = asset == st.session_state.selected_asset
+        btn_type = "primary" if is_active else "secondary"
