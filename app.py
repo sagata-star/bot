@@ -103,7 +103,7 @@ else:
         st.session_state.is_running = False
         st.rerun()
 
-# --- ХРОНОМЕТЪР И ОБНОВЯВАНЕ НА СВЕЩТА (ИЗВЪН ФРАГМЕНТА ЗА СТАБИЛНОСТ) ---
+# --- ХРОНОМЕТЪР И ОБНОВЯВАНЕ НА СВЕЩТА ---
 tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
 required_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
@@ -189,18 +189,18 @@ def render_live_dashboard():
             st.rerun()
             
     with col_timer:
-        # Изчисляване на оставащите секунди локално във фрагмента
         rem_sec = max(0, required_seconds - int(time.time() - st.session_state.last_tick_time))
         if st.session_state.is_running:
             mins, secs = rem_sec // 60, rem_sec % 60
             st.markdown(f"<div style='text-align: right; font-size: 15px; margin-top: 5px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
             if rem_sec == 0:
-                st.rerun() # Безопасен рестарт САМО при реална смяна на свещта
+                st.rerun()
         else:
             st.markdown("<div style='text-align: right; color: #888; margin-top: 5px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
 
     st.write("")
     
+    # ФИКСИРАНИ И ИЗРАВНЕНИ МЕТРИКИ (Точно подравнени 4 интервала отстъп)
     m1, m2, m3 = st.columns(3)
     with m1:
         decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "TRY"]) else 5
