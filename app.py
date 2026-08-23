@@ -6,36 +6,35 @@ from datetime import datetime
 
 # Настройка на уеб страницата
 st.set_page_config(
-    page_title="Pocket Option 3 EMA Web Bot Ultra",
+    page_title="PO 3 EMA Bot",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Инжектиране на минималистични CSS стилове за уеб терминала
+# Инжектиране на компактни CSS стилове за събиране на всичко на 1 екран
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
-    div[data-testid="stMetricValue"] { font-size: 24px; font-weight: bold; }
+    div[data-testid="stMetricValue"] { font-size: 20px !important; font-weight: bold; }
+    div[data-testid="stMetricLabel"] { font-size: 12px !important; }
+    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+    h1 { font-size: 24px !important; margin-bottom: 5px !important; }
+    h5 { font-size: 14px !important; margin-top: 5px !important; margin-bottom: 5px !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- ОБЕДИНЕН СПИСЪК С ВСИЧКИ 28 OTC АКТИВА НА POCKET OPTION ---
+# --- СПИСЪК С ВСИЧКИ 28 OTC АКТИВА ---
 all_otc_assets = [
-    # Валутни двойки (18)
     "EUR/USD (OTC)", "GBP/USD (OTC)", "USD/JPY (OTC)", "AUD/USD (OTC)",
     "EUR/GBP (OTC)", "USD/CAD (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
     "GBP/JPY (OTC)", "EUR/CAD (OTC)", "AUD/CAD (OTC)", "USD/CHF (OTC)",
     "EUR/CHF (OTC)", "CAD/JPY (OTC)", "AUD/JPY (OTC)", "CHF/JPY (OTC)",
-    "GBP/CAD (OTC)", "EUR/AUD (OTC)",
-    # Стоки (2)
-    "GOLD (OTC)", "SILVER (OTC)",
-    # Акции (8)
+    "GBP/CAD (OTC)", "EUR/AUD (OTC)", "GOLD (OTC)", "SILVER (OTC)",
     "APPLE (OTC)", "GOOGLE (OTC)", "MICROSOFT (OTC)", "AMAZON (OTC)", 
     "TESLA (OTC)", "META (OTC)", "NVIDIA (OTC)", "NETFLIX (OTC)"
 ]
 
-# --- ОПТИМИЗИРАНО КЕШИРАНЕ ЗА СВЕТКАВИЧНО ЗАРЕЖДАНЕ ---
 @st.cache_data(ttl=600)
 def generate_fresh_history(asset_name):
     if "JPY" in asset_name: base_price = 145.25
@@ -55,7 +54,7 @@ def generate_fresh_history(asset_name):
         history.append(round(base_price, 5))
     return history
 
-# --- ПАМЕТ И ИНИЦИАЛИЗАЦИЯ НА СЕСИЙНИТЕ ПРОМЕНЛИВИ ---
+# --- ИНИЦИАЛИЗАЦИЯ НА СЕСИЯТА ---
 if "is_running" not in st.session_state: st.session_state.is_running = False
 if "selected_asset" not in st.session_state: st.session_state.selected_asset = "EUR/USD (OTC)"
 if "price_history" not in st.session_state: st.session_state.price_history = generate_fresh_history(st.session_state.selected_asset)
@@ -63,7 +62,6 @@ if "current_price" not in st.session_state: st.session_state.current_price = st.
 if "start_price" not in st.session_state: st.session_state.start_price = st.session_state.price_history[-1]
 if "last_tick_time" not in st.session_state: st.session_state.last_tick_time = time.time()
 
-# --- МАТЕМАТИЧЕСКИ ФУНКЦИИ ---
 def calculate_ema(prices, period):
     if len(prices) < period: return None
     sma = sum(prices[:period]) / period
@@ -73,17 +71,16 @@ def calculate_ema(prices, period):
         ema = (price - ema) * multiplier + ema
     return round(ema, 5)
 
-# --- СТРАНИЧЕН ПАНЕЛ (КОНФИГУРАЦИЯ) ---
-st.sidebar.title("⚙ Конфигурация")
+# --- СТРАНИЧЕН ПАНЕЛ ---
+st.sidebar.title("⚙ Настройки")
 timeframes = ["1 min", "2 min", "3 min", "5 min", "10 min"]
-selected_tf = st.sidebar.selectbox("⏱ Времева рамка за анализ:", timeframes, disabled=st.session_state.is_running)
+selected_tf = st.sidebar.selectbox("⏱ Времева рамка:", timeframes, disabled=st.session_state.is_running)
 
 if selected_tf == "1 min": default_fast, default_mid, default_slow = 12, 26, 100
 elif selected_tf == "2 min": default_fast, default_mid, default_slow = 9, 21, 50
 elif selected_tf == "3 min": default_fast, default_mid, default_slow = 7, 14, 30
 else: default_fast, default_mid, default_slow = 5, 13, 34
 
-st.sidebar.subheader("Адаптивни периоди на EMA")
 fast_p = st.sidebar.number_input("Бърза EMA:", min_value=2, max_value=50, value=default_fast, disabled=st.session_state.is_running)
 mid_p = st.sidebar.number_input("Средна EMA:", min_value=5, max_value=100, value=default_mid, disabled=st.session_state.is_running)
 slow_p = st.sidebar.number_input("Бавна EMA:", min_value=10, max_value=200, value=default_slow, disabled=st.session_state.is_running)
@@ -99,7 +96,7 @@ else:
         st.session_state.is_running = False
         st.rerun()
 
-# --- МАТЕМАТИЧЕСКИ СИГНАЛИ И ИЗЧИСЛЕНИЯ ---
+# --- МАТЕМАТИЧЕСКИ ИЗЧИСЛЕНИЯ ---
 ema_fast = calculate_ema(st.session_state.price_history, fast_p)
 ema_mid = calculate_ema(st.session_state.price_history, mid_p)
 ema_slow = calculate_ema(st.session_state.price_history, slow_p)
@@ -109,105 +106,94 @@ decision_color = "gray"
 
 if ema_fast and ema_mid and ema_slow:
     if ema_fast > ema_mid > ema_slow:
-        decision_text = "КУПУВАЙ (CALL / HIGHER) 🟢"
+        decision_text = "КУПУВАЙ (CALL) 🟢"
         decision_color = "#2ebd85"
     elif ema_fast < ema_mid < ema_slow:
-        decision_text = "ПРОДАВАЙ (PUT / LOWER) 🔴"
+        decision_text = "ПРОДАВАЙ (PUT) 🔴"
         decision_color = "#df294a"
     else:
-        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Пазарна консолидация)"
+        decision_text = "⚠️ НЕ ТЪРКУВАЙ! (Рейндж)"
         decision_color = "#ffa500"
 
-# --- ИЗОЛИРАН ФРАГМЕНТ ЗА АВТОМАТИЧНО ОБНОВЯВАНЕ НА ДАШБОРДА ---
+# --- ИЗОЛИРАН СТАТУС ПАНЕЛ (ФРАГМЕНТ) ---
 @st.fragment(run_every=1.0)
 def render_live_dashboard():
-    # 1. Часовник в реално време
-    current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
-    st.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace; font-size: 14px;'>🕒 Текущо време: {current_datetime}</div>", unsafe_allow_html=True)
+    # Горна линия: Време и Заглавие на един ред
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        st.markdown(f"🤖 **Pocket Option Pro Terminal** | Актив: `{st.session_state.selected_asset}`")
+    with c2:
+        current_datetime = datetime.now().strftime("%d.%m.%Y | %H:%M:%S")
+        st.markdown(f"<div style='text-align: right; color: #aaaaaa; font-family: monospace;'>🕒 {current_datetime}</div>", unsafe_allow_html=True)
     
-    st.title("🤖 Pocket Option Pro: Live Trading Terminal")
-    
-    # 2. Главна табела за решение
+    # Голяма табела за решение (Свита по височина за икономия на място)
     st.markdown(f"""
-        <div style="background-color:#11141a; padding:20px; border-radius:10px; border-left: 10px solid {decision_color}; text-align:center;">
-            <h2 style="color:#aaaaaa; margin:0; font-size:14px;">АКТИВЕН ИНСТРУМЕНТ: <span style="color:#ffffff; font-weight:bold;">{st.session_state.selected_asset}</span></h2>
-            <hr style="border: 0; border-top: 1px solid #2b303c; margin: 12px 0;">
-            <h1 style="color:{decision_color}; margin:0; font-size:30px; font-weight:bold;">{decision_text}</h1>
+        <div style="background-color:#11141a; padding:12px; border-radius:6px; border-left: 8px solid {decision_color}; text-align:center; margin-bottom: 10px;">
+            <h1 style="color:{decision_color}; margin:0; font-size:26px; font-weight:bold;">{decision_text}</h1>
         </div>
     """, unsafe_allow_html=True)
     
-    st.write("")
+    # Пазарна графика (Компактна височина - 120px)
+    chart_df = pd.DataFrame({"Цена": list(st.session_state.price_history)[-35:]})
+    st.line_chart(chart_df, height=120, use_container_width=True)
     
-    # 3. Графика в реално време
-    st.write(f"##### 📈 Пазарно движение в реално време за `{st.session_state.selected_asset}`")
-    chart_df = pd.DataFrame({
-        "Пазарна Цена": list(st.session_state.price_history)[-40:]
-    })
-    st.line_chart(chart_df, height=200, use_container_width=True)
+    # Контролен ред веднага под графиката: Падащо меню + Таймер
+    col_menu, col_timer = st.columns([2, 1])
     
-    # --- ⏱️ НОВО ПАДАЩО МЕНЮ С ПАМЕТ (РАЗПОЛОЖЕНО ПОД ГРАФИКАТА) ⏱️ ---
-    st.write("##### 🎛️ Смяна на актив (Pocket Option OTC)")
-    
-    # Намиране на текущия индекс в списъка за запазване на паметта
-    try:
-        current_index = all_otc_assets.index(st.session_state.selected_asset)
-    except ValueError:
-        current_index = 0
+    with col_menu:
+        try:
+            current_index = all_otc_assets.index(st.session_state.selected_asset)
+        except ValueError:
+            current_index = 0
+            
+        chosen_asset = st.selectbox(
+            "Смяна на актив:", all_otc_assets, index=current_index, 
+            disabled=st.session_state.is_running, label_visibility="collapsed"
+        )
+        if chosen_asset != st.session_state.selected_asset:
+            st.session_state.selected_asset = chosen_asset
+            st.session_state.price_history = generate_fresh_history(chosen_asset)
+            st.session_state.current_price = st.session_state.price_history[-1]
+            st.session_state.start_price = st.session_state.price_history[-1]
+            st.rerun()
+            
+    with col_timer:
+        tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
+        required_seconds = tf_to_seconds.get(selected_tf, 60)
+        elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
+        remaining_seconds = max(0, required_seconds - elapsed_seconds)
+        
+        if st.session_state.is_running:
+            mins, secs = remaining_seconds // 60, remaining_seconds % 60
+            st.markdown(f"<div style='text-align: right; font-size: 15px; margin-top: 5px;'>⏱️ Вход след: <b>{mins:02d}:{secs:02d}</b></div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div style='text-align: right; color: #888; margin-top: 5px;'>⏳ Ботът е спрян</div>", unsafe_allow_html=True)
 
-    # Менюто се заключва, когато ботът е стартиран
-    chosen_asset = st.selectbox(
-        "Изберете инструмент от списъка:", 
-        all_otc_assets, 
-        index=current_index,
-        disabled=st.session_state.is_running,
-        label_visibility="collapsed"
-    )
-    
-    # Ако потребителят избере нов актив, рестартираме сесията за този актив
-    if chosen_asset != st.session_state.selected_asset:
-        st.session_state.selected_asset = chosen_asset
-        st.session_state.price_history = generate_fresh_history(chosen_asset)
-        st.session_state.current_price = st.session_state.price_history[-1]
-        st.session_state.start_price = st.session_state.price_history[-1]
-        st.rerun()
-
-    st.write("")
-
-    # 4. Времеви таймер за следващ вход
-    tf_to_seconds = {"1 min": 60, "2 min": 120, "3 min": 180, "5 min": 300, "10 min": 600}
-    required_seconds = tf_to_seconds.get(selected_tf, 60)
-    elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
-    remaining_seconds = max(0, required_seconds - elapsed_seconds)
-    
+    # Жизнен цикъл на таймера
     if st.session_state.is_running and remaining_seconds == 0:
         tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
         mult = tf_multiplier.get(selected_tf, 1.0)
+        step = 0.50 * mult if "GOLD" in st.session_state.selected_asset else (0.02 * mult if "JPY" in st.session_state.selected_asset else 0.0003 * mult)
         
-        if "GOLD" in st.session_state.selected_asset: step = 0.50 * mult
-        elif "SILVER" in st.session_state.selected_asset: step = 0.05 * mult
-        elif any(x in st.session_state.selected_asset for x in ["APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON"]): step = 0.12 * mult
-        elif "JPY" in st.session_state.selected_asset: step = 0.02 * mult
-        else: step = 0.0003 * mult
-            
         change = random.choice([-step, -step/2, 0, step/2, step])
         st.session_state.current_price = round(st.session_state.current_price + change, 5)
         st.session_state.price_history.append(st.session_state.current_price)
-        if len(st.session_state.price_history) > 120:
-            st.session_state.price_history.pop(0)
         st.session_state.last_tick_time = time.time()
         st.rerun()
-        
-    if st.session_state.is_running:
-        mins = remaining_seconds // 60
-        secs = remaining_seconds % 60
-        st.markdown(f"⏱️ **Време до изтичане на свещта и следващ вход в сделка:** `{mins:02d}:{secs:02d}`")
-    else:
-        st.info("Ботът е в готовност. Натиснете 'СТАРТИРАЙ БОТ' от менюто вляво, за да активирате анализа.")
-        
-    # 5. Панел с Метрики
-    col1, col2, col3 = st.columns(3)
-    with col1:
+
+    st.write("")
+    
+    # Финална хоризонтална линия: Метрики
+    m1, m2, m3 = st.columns(3)
+    with m1:
         decimals = 2 if any(x in st.session_state.selected_asset for x in ["GOLD", "SILVER", "APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON"]) else 5
         st.metric(label="Текуща Цена", value=f"{st.session_state.current_price:.{decimals}f}")
-    with col2:
+    with m2:
         denom = st.session_state.start_price if st.session_state.start_price != 0 else 1.1234
+        pct_change = ((st.session_state.current_price - st.session_state.start_price) / denom) * 100
+        st.metric(label="Промяна сесия", value=f"{pct_change:.3f}%", delta=f"{pct_change:.3f}%")
+    with m3:
+        st.metric(label=f"EMA ({fast_p}/{mid_p}/{slow_p})", value=f"{ema_fast} | {ema_mid} | {ema_slow}")
+
+# Изпълнение
+render_live_dashboard()
