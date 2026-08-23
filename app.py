@@ -48,28 +48,29 @@ all_otc_assets = [
 
 @st.cache_data(ttl=600)
 def generate_fresh_history(asset_name):
-    if "BTC" in asset_name: base_price = 64500.00
-    elif "ETH" in asset_name: base_price = 3450.00
-    elif "GOLD" in asset_name: base_price = 2350.00
-    elif "BRENT" in asset_name: base_price = 82.40
-    elif "JPY" in asset_name: base_price = 145.25
-    elif "RUB" in asset_name or "HUF" in asset_name: base_price = 91.50
-    elif "TRY" in asset_name: base_price = 34.15
-    elif "SGD" in asset_name or "CAD" in asset_name or "AUD" in asset_name: base_price = 1.35
-    elif "CHF" in asset_name: base_price = 0.89
+    if "BTC" in asset_name: start_p = 64500.00
+    elif "ETH" in asset_name: start_p = 3450.00
+    elif "GOLD" in asset_name: start_p = 2350.00
+    elif "BRENT" in asset_name: start_p = 82.40
+    elif "JPY" in asset_name: start_p = 145.25
+    elif "RUB" in asset_name or "HUF" in asset_name: start_p = 91.50
+    elif "TRY" in asset_name: start_p = 34.15
+    elif "SGD" in asset_name or "CAD" in asset_name or "AUD" in asset_name: start_p = 1.35
+    elif "CHF" in asset_name: start_p = 0.89
     elif any(x in asset_name for x in ["APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON", "VISA", "BOEING"]):
-        base_price = random.uniform(120.00, 480.00)
-    else: base_price = 1.1234
+        start_p = random.uniform(120.00, 480.00)
+    else: 
+        start_p = 1.1234
         
     history = []
     for _ in range(120):
-        if base_price > 10000: step = 15.00
-        elif base_price > 1000: step = 1.50
-        elif base_price > 100: step = 0.20
-        elif base_price > 10: step = 0.02
+        if start_p > 10000: step = 15.00
+        elif start_p > 1000: step = 1.50
+        elif start_p > 100: step = 0.20
+        elif start_p > 10: step = 0.02
         else: step = 0.0003
-        base_price += random.choice([-step, -step/2, step/2, step])
-        history.append(round(base_price, 5))
+        start_p += random.choice([-step, -step/2, step/2, step])
+        history.append(round(start_p, 5))
     return history
 
 # Инициализация на сесията
@@ -123,7 +124,7 @@ duration_seconds = tf_to_seconds.get(selected_tf, 60)
 elapsed_seconds = int(time.time() - st.session_state.last_tick_time)
 remaining_seconds = max(0, duration_seconds - elapsed_seconds)
 
-# Динамична обработка на цената при нулиране на уеб брояча
+# Динамична обработка на цената при нулиране на таймера
 if st.session_state.is_running and remaining_seconds == 0:
     tf_multiplier = {"1 min": 1.0, "2 min": 1.3, "3 min": 1.6, "5 min": 2.0, "10 min": 3.0}
     mult = tf_multiplier.get(selected_tf, 1.0)
@@ -177,8 +178,11 @@ if ema_fast and ema_mid and ema_slow:
 top_c1, top_c2 = st.columns(2)
 top_c1.markdown("<h1 class='terminal-title'>📈 POCKET OPTION LIVE TERMINAL</h1>", unsafe_allow_html=True)
 
-# Локален браузърен JavaScript часовник със секундарник (Светкавично бърз и без презареждане)
+# Локален браузърен JavaScript часовник със секундарник
 js_clock = (
     "<div id='live-clock' style='text-align: right; color: #38bdf8; font-family: monospace; font-size: 14px; font-weight: bold; padding-top: 2px;'>Зареждане...</div>"
     "<script>"
     "function updateClock() {"
+    "var n = new Date();"
+    "var d = String(n.getDate()).padStart(2,'0');"
+    "var m = String(n.getMonth()+1).padStart(2,'0');"
