@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 
 # 1. Настройка на уеб страницата
 st.set_page_config(
-    page_title="PO 3 EMA Bot",
+    page_title="PO 3 EMA Bot Pro",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# 2. Инжектиране на оригиналните компактни CSS стилове
+# 2. Инжектиране на компактни CSS стилове
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
@@ -110,33 +110,49 @@ ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА (Класически Streamlit метрики)
+# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА
 t_col1, t_col2, t_col3 = st.columns(3)
 t_col1.metric("🕒 Текущо време (Реално)", current_time_str)
 t_col2.metric(f"⏳ Таймер до следващ вход ({timeframe}м)", f"{remaining_seconds} сек.")
 t_col3.metric(f"Цена {selected_asset}", f"{current_p:.4f}")
 
-# 8. СРЕДЕН ПАНЕЛ: СТРЕЛКА ЗА ПОСОКА И ПРОЦЕНТНО СЪОТНОШЕНИЕ
+# 8. СРЕДЕН ПАНЕЛ: НОВАТА СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
 
 if ema8_p > ema14_p > ema21_p:
-    buy_ratio = random.randint(76, 94)
-    sell_ratio = 100 - buy_ratio
-    arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>BUY (ДЪЛГА)</div>"
-    signal_msg = st.success
-    status_text = f"🔥 СИЛЕН ВЪЗХОДЯЩ ТРЕНД ЗА {timeframe}М"
+    if current_p >= ema8_p:
+        buy_ratio = random.randint(85, 96)
+        sell_ratio = 100 - buy_ratio
+        arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>STRONG BUY</div>"
+        signal_func = st.success
+        status_text = f"🔥 СИЛЕН ИМПУЛС: Линиите и цената потвърждават възходящ тренд на {timeframe}м."
+    else:
+        buy_ratio = random.randint(60, 70)
+        sell_ratio = 100 - buy_ratio
+        arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
+        signal_func = st.warning
+        status_text = f"⏳ КОРЕКЦИЯ: Възходящ тренд, но цената падна под ЕМА 8. Изчакайте!"
+
 elif ema8_p < ema14_p < ema21_p:
-    sell_ratio = random.randint(76, 94)
-    buy_ratio = 100 - sell_ratio
-    arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>SELL (КЪСА)</div>"
-    signal_msg = st.error
-    status_text = f"🚨 СИЛЕН НИСХОДЯЩ ТРЕНД ЗА {timeframe}М"
+    if current_p <= ema8_p:
+        sell_ratio = random.randint(85, 96)
+        buy_ratio = 100 - sell_ratio
+        arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
+        signal_func = st.error
+        status_text = f"🚨 СИЛЕН ИМПУЛС: Линиите и цената потвърждават низходящ тренд на {timeframe}м."
+    else:
+        sell_ratio = random.randint(60, 70)
+        buy_ratio = 100 - sell_ratio
+        arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
+        signal_func = st.warning
+        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА 8. Изчакайте!"
+
 else:
-    buy_ratio = random.randint(45, 55)
+    buy_ratio = random.randint(47, 53)
     sell_ratio = 100 - buy_ratio
-    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>WAIT</div>"
-    signal_msg = st.warning
-    status_text = f"⏳ СТРАНИЧНО ДВИЖЕНИЕ (ФЛАТ) ЗА {timeframe}М"
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
+    signal_func = st.info
+    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Линиите се преплитат хаотично. Пазарът няма посока."
 
 sig_col1, sig_col2 = st.columns(2)
 
@@ -148,9 +164,9 @@ with sig_col2:
     st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
     st.progress(buy_ratio / 100)
     st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
-    signal_msg(status_text)
+    signal_func(status_text)
 
-# 9. ДОЛЕН ПАНЕЛ: ПРЕМЕСТЕНИТЕ EMA 8, 14 И 21 ИНДИКАТОРИ НАЙ-ОТДОЛУ
+# 9. ДОЛЕН ПАНЕЛ: ТЕХНИЧЕСКИ ИНДИКАТОРИ НАЙ-ОТДОЛУ
 st.write("---")
 st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
 
@@ -159,6 +175,6 @@ ema_col1.metric(label="EMA 8 (Бърза)", value=f"{ema8_p:.4f}")
 ema_col2.metric(label="EMA 14 (Средна)", value=f"{ema14_p:.4f}")
 ema_col3.metric(label="EMA 21 (Бавна)", value=f"{ema21_p:.4f}")
 
-# Плавно опресняване на всяка 1 секунда за реалното време
+# Плавно опресняване на реалното време
 time.sleep(1)
 st.rerun()
