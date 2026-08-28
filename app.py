@@ -12,16 +12,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Компактни CSS стилове
+# 2. Компактни CSS стилове + Оптимизация за размерите
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; color: #ffffff; }
-    div[data-testid="stMetricValue"] { font-size: 22px !important; font-weight: bold; color: #00ffcc; }
-    div[data-testid="stMetricLabel"] { font-size: 13px !important; color: #aaaaaa; }
+    /* Намаляване размера на ЕМА метриките */
+    div[data-testid="stMetricValue"] { font-size: 16px !important; font-weight: bold; color: #00ffcc; }
+    div[data-testid="stMetricLabel"] { font-size: 11px !important; color: #aaaaaa; }
     .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-    h1 { font-size: 26px !important; margin-bottom: 5px !important; }
-    h3 { font-size: 16px !important; margin-top: 5px !important; margin-bottom: 5px !important; }
+    h1 { font-size: 24px !important; margin-bottom: 5px !important; }
+    h3 { font-size: 15px !important; margin-top: 5px !important; margin-bottom: 5px !important; }
     div[data-testid="stSidebar"] { background-color: #11141a; }
+    
+    /* Стил за огромните стрелки за посока */
+    .direction-arrow { font-size: 70px !important; font-weight: bold; text-align: center; line-height: 1; }
+    .direction-text { font-size: 28px !important; font-weight: bold; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,29 +77,26 @@ st.title("🤖 PO 3 EMA Bot Dashboard")
 selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_assets, index=0)
 timeframe = st.sidebar.selectbox("Времеви диапазон (Таймфрейм):", [1, 3, 5, 10], index=0, format_func=lambda x: f"{x} мин.")
 
-# 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ (Контрол над хаотичността)
+# 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != timeframe:
     st.session_state.current_asset = selected_asset
     st.session_state.current_tf = timeframe
     st.session_state.df_history = generate_fresh_history(selected_asset, timeframe)
     st.session_state.last_update_minute = datetime.now().minute
 
-# Проверка дали е изтекла свещта спрямо времевия диапазон, за да добавим нов бар
 now = datetime.now()
 current_minute = now.minute
 
 if current_minute % timeframe == 0 and current_minute != st.session_state.last_update_minute:
     st.session_state.last_update_minute = current_minute
-    # Добавяне на една нова стабилна точка на затваряне
     last_price = st.session_state.df_history["Price"].iloc[-1]
     new_price = last_price + random.uniform(-last_price * 0.0008, last_price * 0.0008)
     new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
     st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
 
-# Извличане на стабилния DataFrame за анализи
 df = st.session_state.df_history.copy()
 
-# Изчисляване на ЕМА показателите върху фиксираните данни
+# Изчисляване на ЕМА показателите
 df['EMA_8'] = df['Price'].ewm(span=8, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=14, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=21, adjust=False).mean()
@@ -114,27 +116,54 @@ ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# 8. КОМПАКТНИ МЕТРИКИ ЗА ЦЕНИТЕ
+# 8. КОМПАКТНИ МЕТРИКИ ЗА ЦЕНИТЕ С НАМАЛЕН РАЗМЕР НА ЕМА
 st.write("---")
-col1, col2, col3, col4 = st.columns(4)
-col1.metric(label=f"Цена {selected_asset}", value=f"{current_p:.4f}")
-col2.metric(label="EMA 8", value=f"{ema8_p:.4f}")
-col3.metric(label="EMA 14", value=f"{ema14_p:.4f}")
-col4.metric(label="EMA 21", value=f"{ema21_p:.4f}")
+col_p, col_e8, col_e14, col_e21 = st.columns([2, 1, 1, 1])
+# Използваме HTML за по-малък и прегледен вид на ЕМА спрямо главната цена
+col_p.markdown(f"### Цена {selected_asset}<br><span style='font-size: 26px; font-weight: bold; color: #00ffcc;'>{current_p:.4f}</span>", unsafe_allow_html=True)
+col_e8.markdown(f"<p style='margin:0; color:#aaaaaa; font-size:12px;'>EMA 8 (Бърза)</p><p style='margin:0; font-size:15px; font-weight:bold; color:#ff9900;'>{ema8_p:.4f}</p>", unsafe_allow_html=True)
+col_e14.markdown(f"<p style='margin:0; color:#aaaaaa; font-size:12px;'>EMA 14 (Средна)</p><p style='margin:0; font-size:15px; font-weight:bold; color:#3399ff;'>{ema14_p:.4f}</p>", unsafe_allow_html=True)
+col_e21.markdown(f"<p style='margin:0; color:#aaaaaa; font-size:12px;'>EMA 21 (Бавна)</p><p style='margin:0; font-size:15px; font-weight:bold; color:#ff3333;'>{ema21_p:.4f}</p>", unsafe_allow_html=True)
 
-# 9. СТАБИЛНА ВИЗУАЛИЗАЦИЯ НА СИГНАЛА
+# 9. ИЗЧИСЛЯВАНЕ НА ПРОЦЕНТНО СЪОТНОШЕНИЕ И ДИНАМИЧНА СТРЕЛКА
 st.write("---")
+
+# Математическа симулация на пазарното съотношение спрямо позицията на ЕМА
 if ema8_p > ema14_p > ema21_p:
-    st.success(f"🔥 СИГНАЛ ЗА ВХОД: СИЛЕН BUY — Трендът на {timeframe} мин. е твърдо ВЪЗХОДЯЩ")
+    buy_ratio = random.randint(76, 94)
+    sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>BUY (ДЪЛГА)</div>"
+    signal_msg = st.success
+    status_text = f"🔥 СИЛЕН ВЪЗХОДЯЩ ТРЕНД НА {timeframe}М"
 elif ema8_p < ema14_p < ema21_p:
-    st.error(f"🚨 СИГНАЛ ЗА ВХОД: СИЛЕН SELL — Трендът на {timeframe} мин. е твърдо НИСХОДЯЩ")
+    sell_ratio = random.randint(76, 94)
+    buy_ratio = 100 - sell_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>SELL (КЪСА)</div>"
+    signal_msg = st.error
+    status_text = f"🚨 СИЛЕН НИСХОДЯЩ ТРЕНД НА {timeframe}М"
 else:
-    st.warning(f"⏳ СИГНАЛ: СТРАНИЧНО ДВИЖЕНИЕ (ФЛАТ) — Изчакайте пресичане на ЕМА на {timeframe} мин.")
+    # Странично движение (Флат)
+    buy_ratio = random.randint(45, 55)
+    sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>WAIT (ИЗЧАКВАНЕ)</div>"
+    signal_msg = st.warning
+    status_text = f"⏳ СТРАНИЧНО ДВИЖЕНИЕ (БЕЗ СИГНАЛ) ЗА {timeframe}М"
 
-# 10. ГРАФИКА НА СЪЩАТА СТРАНИЦА
-st.subheader(f"Стабилен тренд анализ на {timeframe} минутна база")
-chart_data = df.set_index("Timestamp")[["Price", "EMA_8", "EMA_14", "EMA_21"]]
-st.line_chart(chart_data, height=380)
+# Разпределение на екрана: 1/3 за стрелката, 2/3 за Процентното съотношение
+sig_col1, sig_col2 = st.columns([1, 2])
+
+with sig_col1:
+    st.markdown(arrow_html, unsafe_allow_html=True)
+
+with sig_col2:
+    st.markdown(f"### 📊 Пазарно съотношение ({timeframe}м)")
+    # Прогрес лента/визуализация за съотношението
+    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
+    st.progress(buy_ratio / 100)
+    st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
+    
+    # Текстово потвърждение под съотношението
+    signal_msg(status_text)
 
 # Плавно опресняване на реалното време без разваляне на тренда
 time.sleep(1)
