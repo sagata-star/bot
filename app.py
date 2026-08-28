@@ -6,27 +6,41 @@ from datetime import datetime, timedelta
 
 # 1. Настройка на уеб страницата
 st.set_page_config(
-    page_title="SAGATA E.M.A. Bot",
+    page_title="PO 3 EMA Bot",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# 2. Компактни CSS стилове + Оптимизация за размерите
+# 2. Модерни Елегантни CSS стилове с текстурни сиви балони (Cards)
 st.markdown("""
     <style>
-    .main { background-color: #1c1f26; color: #ffffff; }
-    /* Намаляване размера на ЕМА метриките */
-    div[data-testid="stMetricValue"] { font-size: 16px !important; font-weight: bold; color: #00ffcc; }
-    div[data-testid="stMetricLabel"] { font-size: 11px !important; color: #aaaaaa; }
-    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-    h1 { font-size: 24px !important; margin-bottom: 5px !important; }
-    h3 { font-size: 15px !important; margin-top: 5px !important; margin-bottom: 5px !important; }
-    div[data-testid="stSidebar"] { background-color: #11141a; }
+    .main { background-color: #121418; color: #ffffff; }
+    div[data-testid="stSidebar"] { background-color: #1a1d24; }
+    
+    /* Стил за елегантните сиви балони */
+    .grey-bubble {
+        background: linear-gradient(145deg, #232731, #1e2229);
+        border: 1px solid #2d3341;
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .grey-bubble-small {
+        background: linear-gradient(145deg, #21252d, #1c1f26);
+        border: 1px solid #2a2f3b;
+        border-radius: 10px;
+        padding: 10px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+        text-align: center;
+    }
     
     /* Стил за огромните стрелки за посока */
-    .direction-arrow { font-size: 70px !important; font-weight: bold; text-align: center; line-height: 1; }
-    .direction-text { font-size: 28px !important; font-weight: bold; text-align: center; }
+    .direction-arrow { font-size: 75px !important; font-weight: bold; text-align: center; line-height: 1; margin-bottom: 5px; }
+    .direction-text { font-size: 24px !important; font-weight: bold; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -101,69 +115,76 @@ df['EMA_8'] = df['Price'].ewm(span=8, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=14, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=21, adjust=False).mean()
 
-# 7. ЧАСОВНИК И ТАЙМЕР ЗА ВХОД В РЕАЛНО ВРЕМЕ
 current_time_str = now.strftime("%H:%M:%S")
 seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
 timeframe_seconds = timeframe * 60
 remaining_seconds = int(timeframe_seconds - (seconds_since_midnight % timeframe_seconds))
-
-t_col1, t_col2 = st.columns(2)
-t_col1.metric("🕒 Текущо време (Реално)", current_time_str)
-t_col2.metric(f"⏳ Таймер до затваряне на свещта ({timeframe}м)", f"{remaining_seconds} сек.")
 
 current_p = df['Price'].iloc[-1]
 ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# 8. КОМПАКТНИ МЕТРИКИ ЗА ЦЕНИТЕ С НАМАЛЕН РАЗМЕР НА ЕМА
-st.write("---")
-col_p, col_e8, col_e14, col_e21 = st.columns([2, 1, 1, 1])
-# Използваме HTML за по-малък и прегледен вид на ЕМА спрямо главната цена
-col_p.markdown(f"### Цена {selected_asset}<br><span style='font-size: 26px; font-weight: bold; color: #00ffcc;'>{current_p:.4f}</span>", unsafe_allow_html=True)
-col_e8.markdown(f"<p style='margin:0; color:#aaaaaa; font-size:12px;'>EMA 8 (Бърза)</p><p style='margin:0; font-size:15px; font-weight:bold; color:#ff9900;'>{ema8_p:.4f}</p>", unsafe_allow_html=True)
-col_e14.markdown(f"<p style='margin:0; color:#aaaaaa; font-size:12px;'>EMA 14 (Средна)</p><p style='margin:0; font-size:15px; font-weight:bold; color:#3399ff;'>{ema14_p:.4f}</p>", unsafe_allow_html=True)
-col_e21.markdown(f"<p style='margin:0; color:#aaaaaa; font-size:12px;'>EMA 21 (Бавна)</p><p style='margin:0; font-size:15px; font-weight:bold; color:#ff3333;'>{ema21_p:.4f}</p>", unsafe_allow_html=True)
+# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА (Обвити в сиви балони)
+t_col1, t_col2, t_col3 = st.columns(3)
 
-# 9. ИЗЧИСЛЯВАНЕ НА ПРОЦЕНТНО СЪОТНОШЕНИЕ И ДИНАМИЧНА СТРЕЛКА
+with t_col1:
+    st.markdown(f"<div class='grey-bubble'><p style='margin:0; color:#aaaaaa; font-size:12px;'>🕒 Текущо време</p><p style='margin:0; font-size:22px; font-weight:bold; color:#00ffcc;'>{current_time_str}</p></div>", unsafe_allow_html=True)
+
+with t_col2:
+    st.markdown(f"<div class='grey-bubble'><p style='margin:0; color:#aaaaaa; font-size:12px;'>⏳ Време до следващ вход ({timeframe}м)</p><p style='margin:0; font-size:22px; font-weight:bold; color:#ffcc00;'>{remaining_seconds} сек.</p></div>", unsafe_allow_html=True)
+
+with t_col3:
+    st.markdown(f"<div class='grey-bubble'><p style='margin:0; color:#aaaaaa; font-size:12px;'>💵 Текуща цена ({selected_asset})</p><p style='margin:0; font-size:22px; font-weight:bold; color:#00ffcc;'>{current_p:.4f}</p></div>", unsafe_allow_html=True)
+
+# 8. СРЕДЕН ПАНЕЛ: СТРЕЛКА ЗА ПОСОКА И ПРОЦЕНТНО СЪОТНОШЕНИЕ
 st.write("---")
 
-# Математическа симулация на пазарното съотношение спрямо позицията на ЕМА
 if ema8_p > ema14_p > ema21_p:
     buy_ratio = random.randint(76, 94)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>BUY (ДЪЛГА)</div>"
-    signal_msg = st.success
-    status_text = f"🔥 СИЛЕН ВЪЗХОДЯЩ ТРЕНД НА {timeframe}М"
+    status_text = f"<span style='color:#00ff66; font-weight:bold;'>🔥 СИЛЕН ВЪЗХОДЯЩ ТРЕНД ЗА {timeframe}М</span>"
 elif ema8_p < ema14_p < ema21_p:
     sell_ratio = random.randint(76, 94)
     buy_ratio = 100 - sell_ratio
     arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>SELL (КЪСА)</div>"
-    signal_msg = st.error
-    status_text = f"🚨 СИЛЕН НИСХОДЯЩ ТРЕНД НА {timeframe}М"
+    status_text = f"<span style='color:#ff3333; font-weight:bold;'>🚨 СИЛЕН НИСХОДЯЩ ТРЕНД ЗА {timeframe}М</span>"
 else:
-    # Странично движение (Флат)
     buy_ratio = random.randint(45, 55)
     sell_ratio = 100 - buy_ratio
-    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>WAIT (ИЗЧАКВАНЕ)</div>"
-    signal_msg = st.warning
-    status_text = f"⏳ СТРАНИЧНО ДВИЖЕНИЕ (БЕЗ СИГНАЛ) ЗА {timeframe}М"
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>WAIT</div>"
+    status_text = f"<span style='color:#aaaaaa; font-weight:bold;'>⏳ СТРАНИЧНО ДВИЖЕНИЕ (ФЛАТ) ЗА {timeframe}М</span>"
 
-# Разпределение на екрана: 1/3 за стрелката, 2/3 за Процентното съотношение
-sig_col1, sig_col2 = st.columns([1, 2])
+sig_col1, sig_col2 = st.columns()
 
 with sig_col1:
-    st.markdown(arrow_html, unsafe_allow_html=True)
+    st.markdown(f"<div class='grey-bubble' style='padding:25px;'>{arrow_html}</div>", unsafe_allow_html=True)
 
 with sig_col2:
-    st.markdown(f"### 📊 Пазарно съотношение ({timeframe}м)")
-    # Прогрес лента/визуализация за съотношението
-    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
-    st.progress(buy_ratio / 100)
-    st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
-    
-    # Текстово потвърждение под съотношението
-    signal_msg(status_text)
+    with st.container():
+        st.markdown("<div class='grey-bubble' style='text-align:left; padding:18px;'>", unsafe_allow_html=True)
+        st.markdown(f"### 📊 Пазарно съотношение ({timeframe}м)")
+        st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
+        st.progress(buy_ratio / 100)
+        st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
+        st.markdown(f"<p style='margin-top:10px; font-size:14px;'>Статус: {status_text}</p>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# 9. ДОЛЕН ПАНЕЛ: ПРЕМЕСТЕНИТЕ EMA 8, 14 И 21 ИНДИКАТОРИ (В отделни сиви балони)
+st.write("---")
+st.markdown("<h4 style='text-align:center; color:#aaaaaa; font-size:14px; margin-bottom:10px;'>📊 Технически индикатори (Изчислени стойности)</h4>", unsafe_allow_html=True)
+
+ema_col1, ema_col2, ema_col3 = st.columns(3)
+
+with ema_col1:
+    st.markdown(f"<div class='grey-bubble-small'><p style='margin:0; color:#ff9900; font-size:12px; font-weight:bold;'>EMA 8 (Бърза)</p><p style='margin:2px 0 0 0; font-size:16px; font-weight:bold; color:#ffffff;'>{ema8_p:.4f}</p></div>", unsafe_allow_html=True)
+
+with ema_col2:
+    st.markdown(f"<div class='grey-bubble-small'><p style='margin:0; color:#3399ff; font-size:12px; font-weight:bold;'>EMA 14 (Средна)</p><p style='margin:2px 0 0 0; font-size:16px; font-weight:bold; color:#ffffff;'>{ema14_p:.4f}</p></div>", unsafe_allow_html=True)
+
+with ema_col3:
+    st.markdown(f"<div class='grey-bubble-small'><p style='margin:0; color:#ff3333; font-size:12px; font-weight:bold;'>EMA 21 (Бавна)</p><p style='margin:2px 0 0 0; font-size:16px; font-weight:bold; color:#ffffff;'>{ema21_p:.4f}</p></div>", unsafe_allow_html=True)
 
 # Плавно опресняване на реалното време без разваляне на тренда
 time.sleep(1)
