@@ -12,35 +12,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Модерни Елегантни CSS стилове с текстурни сиви балони (Cards)
+# 2. Инжектиране на оригиналните компактни CSS стилове
 st.markdown("""
     <style>
-    .main { background-color: #121418; color: #ffffff; }
-    div[data-testid="stSidebar"] { background-color: #1a1d24; }
+    .main { background-color: #1c1f26; }
+    div[data-testid="stMetricValue"] { font-size: 20px !important; font-weight: bold; }
+    div[data-testid="stMetricLabel"] { font-size: 12px !important; }
+    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+    h1 { font-size: 24px !important; margin-bottom: 5px !important; }
+    h5 { font-size: 14px !important; margin-top: 5px !important; margin-bottom: 5px !important; }
     
-    /* Стил за елегантните сиви балони */
-    .grey-bubble {
-        background: linear-gradient(145deg, #232731, #1e2229);
-        border: 1px solid #2d3341;
-        border-radius: 12px;
-        padding: 15px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        margin-bottom: 10px;
-        text-align: center;
-    }
-    
-    .grey-bubble-small {
-        background: linear-gradient(145deg, #21252d, #1c1f26);
-        border: 1px solid #2a2f3b;
-        border-radius: 10px;
-        padding: 10px;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-        text-align: center;
-    }
-    
-    /* Стил за огромните стрелки за посока */
-    .direction-arrow { font-size: 75px !important; font-weight: bold; text-align: center; line-height: 1; margin-bottom: 5px; }
-    .direction-text { font-size: 24px !important; font-weight: bold; text-align: center; }
+    /* Стил за голямата цветна стрелка и текст */
+    .direction-arrow { font-size: 70px !important; font-weight: bold; text-align: center; line-height: 1; }
+    .direction-text { font-size: 28px !important; font-weight: bold; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -115,6 +99,7 @@ df['EMA_8'] = df['Price'].ewm(span=8, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=14, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=21, adjust=False).mean()
 
+# Извличане на текущи стойности
 current_time_str = now.strftime("%H:%M:%S")
 seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
 timeframe_seconds = timeframe * 60
@@ -125,17 +110,11 @@ ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА (Обвити в сиви балони)
+# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА (Класически Streamlit метрики)
 t_col1, t_col2, t_col3 = st.columns(3)
-
-with t_col1:
-    st.markdown(f"<div class='grey-bubble'><p style='margin:0; color:#aaaaaa; font-size:12px;'>🕒 Текущо време</p><p style='margin:0; font-size:22px; font-weight:bold; color:#00ffcc;'>{current_time_str}</p></div>", unsafe_allow_html=True)
-
-with t_col2:
-    st.markdown(f"<div class='grey-bubble'><p style='margin:0; color:#aaaaaa; font-size:12px;'>⏳ Време до следващ вход ({timeframe}м)</p><p style='margin:0; font-size:22px; font-weight:bold; color:#ffcc00;'>{remaining_seconds} сек.</p></div>", unsafe_allow_html=True)
-
-with t_col3:
-    st.markdown(f"<div class='grey-bubble'><p style='margin:0; color:#aaaaaa; font-size:12px;'>💵 Текуща цена ({selected_asset})</p><p style='margin:0; font-size:22px; font-weight:bold; color:#00ffcc;'>{current_p:.4f}</p></div>", unsafe_allow_html=True)
+t_col1.metric("🕒 Текущо време (Реално)", current_time_str)
+t_col2.metric(f"⏳ Таймер до следващ вход ({timeframe}м)", f"{remaining_seconds} сек.")
+t_col3.metric(f"Цена {selected_asset}", f"{current_p:.4f}")
 
 # 8. СРЕДЕН ПАНЕЛ: СТРЕЛКА ЗА ПОСОКА И ПРОЦЕНТНО СЪОТНОШЕНИЕ
 st.write("---")
@@ -144,48 +123,42 @@ if ema8_p > ema14_p > ema21_p:
     buy_ratio = random.randint(76, 94)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>BUY (ДЪЛГА)</div>"
-    status_text = f"<span style='color:#00ff66; font-weight:bold;'>🔥 СИЛЕН ВЪЗХОДЯЩ ТРЕНД ЗА {timeframe}М</span>"
+    signal_msg = st.success
+    status_text = f"🔥 СИЛЕН ВЪЗХОДЯЩ ТРЕНД ЗА {timeframe}М"
 elif ema8_p < ema14_p < ema21_p:
     sell_ratio = random.randint(76, 94)
     buy_ratio = 100 - sell_ratio
     arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>SELL (КЪСА)</div>"
-    status_text = f"<span style='color:#ff3333; font-weight:bold;'>🚨 СИЛЕН НИСХОДЯЩ ТРЕНД ЗА {timeframe}М</span>"
+    signal_msg = st.error
+    status_text = f"🚨 СИЛЕН НИСХОДЯЩ ТРЕНД ЗА {timeframe}М"
 else:
     buy_ratio = random.randint(45, 55)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>WAIT</div>"
-    status_text = f"<span style='color:#aaaaaa; font-weight:bold;'>⏳ СТРАНИЧНО ДВИЖЕНИЕ (ФЛАТ) ЗА {timeframe}М</span>"
+    signal_msg = st.warning
+    status_text = f"⏳ СТРАНИЧНО ДВИЖЕНИЕ (ФЛАТ) ЗА {timeframe}М"
 
-sig_col1, sig_col2 = st.columns()
+sig_col1, sig_col2 = st.columns(2)
 
 with sig_col1:
-    st.markdown(f"<div class='grey-bubble' style='padding:25px;'>{arrow_html}</div>", unsafe_allow_html=True)
+    st.markdown(arrow_html, unsafe_allow_html=True)
 
 with sig_col2:
-    with st.container():
-        st.markdown("<div class='grey-bubble' style='text-align:left; padding:18px;'>", unsafe_allow_html=True)
-        st.markdown(f"### 📊 Пазарно съотношение ({timeframe}м)")
-        st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
-        st.progress(buy_ratio / 100)
-        st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
-        st.markdown(f"<p style='margin-top:10px; font-size:14px;'>Статус: {status_text}</p>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.subheader(f"📊 Пазарно съотношение ({timeframe}м)")
+    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
+    st.progress(buy_ratio / 100)
+    st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
+    signal_msg(status_text)
 
-# 9. ДОЛЕН ПАНЕЛ: ПРЕМЕСТЕНИТЕ EMA 8, 14 И 21 ИНДИКАТОРИ (В отделни сиви балони)
+# 9. ДОЛЕН ПАНЕЛ: ПРЕМЕСТЕНИТЕ EMA 8, 14 И 21 ИНДИКАТОРИ НАЙ-ОТДОЛУ
 st.write("---")
-st.markdown("<h4 style='text-align:center; color:#aaaaaa; font-size:14px; margin-bottom:10px;'>📊 Технически индикатори (Изчислени стойности)</h4>", unsafe_allow_html=True)
+st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
 
 ema_col1, ema_col2, ema_col3 = st.columns(3)
+ema_col1.metric(label="EMA 8 (Бърза)", value=f"{ema8_p:.4f}")
+ema_col2.metric(label="EMA 14 (Средна)", value=f"{ema14_p:.4f}")
+ema_col3.metric(label="EMA 21 (Бавна)", value=f"{ema21_p:.4f}")
 
-with ema_col1:
-    st.markdown(f"<div class='grey-bubble-small'><p style='margin:0; color:#ff9900; font-size:12px; font-weight:bold;'>EMA 8 (Бърза)</p><p style='margin:2px 0 0 0; font-size:16px; font-weight:bold; color:#ffffff;'>{ema8_p:.4f}</p></div>", unsafe_allow_html=True)
-
-with ema_col2:
-    st.markdown(f"<div class='grey-bubble-small'><p style='margin:0; color:#3399ff; font-size:12px; font-weight:bold;'>EMA 14 (Средна)</p><p style='margin:2px 0 0 0; font-size:16px; font-weight:bold; color:#ffffff;'>{ema14_p:.4f}</p></div>", unsafe_allow_html=True)
-
-with ema_col3:
-    st.markdown(f"<div class='grey-bubble-small'><p style='margin:0; color:#ff3333; font-size:12px; font-weight:bold;'>EMA 21 (Бавна)</p><p style='margin:2px 0 0 0; font-size:16px; font-weight:bold; color:#ffffff;'>{ema21_p:.4f}</p></div>", unsafe_allow_html=True)
-
-# Плавно опресняване на реалното време без разваляне на тренда
+# Плавно опресняване на всяка 1 секунда за реалното време
 time.sleep(1)
 st.rerun()
