@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 # 1. Настройка на уеб страницата
 st.set_page_config(
-    page_title="PO 3 EMA Bot",
+    page_title="SAGATA E.M.A. Bot",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
