@@ -28,15 +28,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. --- ПЪЛЕН СПИСЪК С ВСИЧКИ OTC АКТИВИ НА POCKET OPTION ---
+# 3. --- ОБНОВЕН СПИСЪК С НАД 70 OTC АКТИВА НА POCKET OPTION (+10 НОВИ) ---
 all_otc_assets = [
+    # Нови 10 добавени актива (Крипто, Индекси и Валути)
+    "BTC/USD (OTC)", "ETH/USD (OTC)", "LTC/USD (OTC)", "USDT/RUB (OTC)",
+    "US Tech 100 (OTC)", "US SPX 500 (OTC)", "Germany 40 (OTC)", 
+    "AUD/CHF (OTC)", "EUR/NZD (OTC)", "GBP/NZD (OTC)",
+    
+    # Предишни активи
     "EUR/USD (OTC)", "GBP/USD (OTC)", "USD/JPY (OTC)", "AUD/USD (OTC)",
     "EUR/GBP (OTC)", "USD/CAD (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
     "GBP/JPY (OTC)", "EUR/CAD (OTC)", "AUD/CAD (OTC)", "USD/CHF (OTC)",
     "EUR/CHF (OTC)", "CAD/JPY (OTC)", "AUD/JPY (OTC)", "CHF/JPY (OTC)",
-    "GBP/CAD (OTC)", "EUR/AUD (OTC)", "AUD/CHF (OTC)", "AUD/NZD (OTC)",
-    "CAD/CHF (OTC)", "EUR/NZD (OTC)", "GBP/AUD (OTC)", "GBP/CHF (OTC)",
-    "GBP/NZD (OTC)", "NZD/CAD (OTC)", "NZD/CHF (OTC)", "NZD/JPY (OTC)",
+    "GBP/CAD (OTC)", "EUR/AUD (OTC)", "AUD/NZD (OTC)",
+    "CAD/CHF (OTC)", "GBP/AUD (OTC)", "GBP/CHF (OTC)",
+    "NZD/CAD (OTC)", "NZD/CHF (OTC)", "NZD/JPY (OTC)",
     "USD/TRY (OTC)", "EUR/ZAR (OTC)", "USD/ZAR (OTC)", "USD/THB (OTC)", 
     "USD/SGD (OTC)", "USD/RUB (OTC)", "EUR/RUB (OTC)", "USD/PLN (OTC)", 
     "USD/NOK (OTC)", "USD/SEK (OTC)", "USD/MXN (OTC)", "USD/INR (OTC)",
@@ -47,48 +53,67 @@ all_otc_assets = [
     "NVIDIA (OTC)", "NETFLIX (OTC)"
 ]
 
-# 4. Функция за генериране на базова история
-def generate_fresh_history(asset_name, timeframe_mins):
+# 4. Функция за генериране на базова история спрямо секунди или минути
+def generate_fresh_history(asset_name, tf_seconds):
     if "JPY" in asset_name: base_price = 145.25
     elif "CHF" in asset_name and "JPY" not in asset_name: base_price = 0.8950
     elif "GOLD" in asset_name: base_price = 2350.00
     elif "SILVER" in asset_name: base_price = 28.50
+    elif "BTC" in asset_name: base_price = 64500.00
+    elif "ETH" in asset_name: base_price = 3450.00
+    elif "US Tech" in asset_name or "SPX" in asset_name: base_price = 5400.00
     elif any(x in asset_name for x in ["APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON"]):
         base_price = random.uniform(150.00, 450.00)
     else: base_price = 1.1234
 
     prices = []
     times = []
-    current_time = datetime.now() - timedelta(minutes=100 * timeframe_mins)
+    current_time = datetime.now() - timedelta(seconds=100 * tf_seconds)
     current_price = base_price
     
     for i in range(100):
-        current_price += random.uniform(-base_price * 0.0008, base_price * 0.0008)
+        current_price += random.uniform(-base_price * 0.0005, base_price * 0.0005)
         prices.append(current_price)
-        times.append(current_time + timedelta(minutes=i * timeframe_mins))
+        times.append(current_time + timedelta(seconds=i * tf_seconds))
         
     return pd.DataFrame({"Timestamp": times, "Price": prices})
 
 # 5. НАСТРОЙКИ В СТРАНИЧНИЯ ПАНЕЛ
 st.title("🤖 PO 3 EMA Bot Dashboard")
 
-selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_assets, index=0)
-timeframe = st.sidebar.selectbox("Времеви диапазон (Таймфрейм):", [1, 3, 5, 10], index=0, format_func=lambda x: f"{x} мин.")
+selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_assets, index=10)
+
+# Добавени Времеви диапазони за 5с, 15с, 30с заедно с 1м, 3м, 5м, 10м
+timeframe_label = st.sidebar.selectbox(
+    "Времеви диапазон (Таймфрейм):",
+    options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"],
+    index=3
+)
+
+# Превръщане на таймфрейма в чисти секунди за математическите изчисления
+tf_mapping = {
+    "5 сек": 5, "15 сек": 15, "30 сек": 30,
+    "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
+}
+tf_seconds = tf_mapping[timeframe_label]
 
 # 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ
-if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != timeframe:
+if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
     st.session_state.current_asset = selected_asset
-    st.session_state.current_tf = timeframe
-    st.session_state.df_history = generate_fresh_history(selected_asset, timeframe)
-    st.session_state.last_update_minute = datetime.now().minute
+    st.session_state.current_tf = tf_seconds
+    st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
+    st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
+# Изчисляване на таймера за затваряне на свещта в реално време
 now = datetime.now()
-current_minute = now.minute
+current_timestamp_bucket = int(time.time() / tf_seconds)
+remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
-if current_minute % timeframe == 0 and current_minute != st.session_state.last_update_minute:
-    st.session_state.last_update_minute = current_minute
+# Проверка за нова свещ на база изтекли секунди/минути
+if current_timestamp_bucket != st.session_state.last_update_timestamp:
+    st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
-    new_price = last_price + random.uniform(-last_price * 0.0008, last_price * 0.0008)
+    new_price = last_price + random.uniform(-last_price * 0.0005, last_price * 0.0005)
     new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
     st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
 
@@ -99,12 +124,7 @@ df['EMA_8'] = df['Price'].ewm(span=8, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=14, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=21, adjust=False).mean()
 
-# Извличане на текущи стойности
 current_time_str = now.strftime("%H:%M:%S")
-seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
-timeframe_seconds = timeframe * 60
-remaining_seconds = int(timeframe_seconds - (seconds_since_midnight % timeframe_seconds))
-
 current_p = df['Price'].iloc[-1]
 ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
@@ -113,10 +133,10 @@ ema21_p = df['EMA_21'].iloc[-1]
 # 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА
 t_col1, t_col2, t_col3 = st.columns(3)
 t_col1.metric("🕒 Текущо време (Реално)", current_time_str)
-t_col2.metric(f"⏳ Таймер до следващ вход ({timeframe}м)", f"{remaining_seconds} сек.")
-t_col3.metric(f"Цена {selected_asset}", f"{current_p:.4f}")
+t_col2.metric(f"⏳ Таймер до следващ вход ({timeframe_label})", f"{remaining_seconds} сек.")
+t_col3.metric(f"Цена {selected_asset}", f"{current_p:.4f}" if current_p < 1000 else f"{current_p:.2f}")
 
-# 8. СРЕДЕН ПАНЕЛ: НОВАТА СТРОГА ЛОГИКА ЗА СИГНАЛИ
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ СПРЯМО СЕКУНДНИЯ/МИНУТНИЯ ТАЙМФРЕЙМ
 st.write("---")
 
 if ema8_p > ema14_p > ema21_p:
@@ -125,13 +145,13 @@ if ema8_p > ema14_p > ema21_p:
         sell_ratio = 100 - buy_ratio
         arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>STRONG BUY</div>"
         signal_func = st.success
-        status_text = f"🔥 СИЛЕН ИМПУЛС: Линиите и цената потвърждават възходящ тренд на {timeframe}м."
+        status_text = f"🔥 СИЛЕН ИМПУЛС: Линиите и цената потвърждават възходящ тренд на {timeframe_label}."
     else:
         buy_ratio = random.randint(60, 70)
         sell_ratio = 100 - buy_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Възходящ тренд, но цената падна под ЕМА 8. Изчакайте!"
+        status_text = f"⏳ КОРЕКЦИЯ: Възходящ тренд, но цената падна под ЕМА 8 за {timeframe_label}. Изчакайте!"
 
 elif ema8_p < ema14_p < ema21_p:
     if current_p <= ema8_p:
@@ -139,20 +159,20 @@ elif ema8_p < ema14_p < ema21_p:
         buy_ratio = 100 - sell_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
         signal_func = st.error
-        status_text = f"🚨 СИЛЕН ИМПУЛС: Линиите и цената потвърждават низходящ тренд на {timeframe}м."
+        status_text = f"🚨 СИЛЕН ИМПУЛС: Линиите и цената потвърждават низходящ тренд на {timeframe_label}."
     else:
         sell_ratio = random.randint(60, 70)
         buy_ratio = 100 - sell_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА 8. Изчакайте!"
+        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА 8 за {timeframe_label}. Изчакайте!"
 
 else:
     buy_ratio = random.randint(47, 53)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
     signal_func = st.info
-    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Линиите се преплитат хаотично. Пазарът няма посока."
+    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): На база {timeframe_label} пазарът няма ясна посока."
 
 sig_col1, sig_col2 = st.columns(2)
 
@@ -160,7 +180,7 @@ with sig_col1:
     st.markdown(arrow_html, unsafe_allow_html=True)
 
 with sig_col2:
-    st.subheader(f"📊 Пазарно съотношение ({timeframe}м)")
+    st.subheader(f"📊 Пазарно съотношение ({timeframe_label})")
     st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
     st.progress(buy_ratio / 100)
     st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
@@ -171,10 +191,12 @@ st.write("---")
 st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
 
 ema_col1, ema_col2, ema_col3 = st.columns(3)
-ema_col1.metric(label="EMA 8 (Бърза)", value=f"{ema8_p:.4f}")
-ema_col2.metric(label="EMA 14 (Средна)", value=f"{ema14_p:.4f}")
-ema_col3.metric(label="EMA 21 (Бавна)", value=f"{ema21_p:.4f}")
+# Форматиране спрямо цената на актива (криптовалутите имат по-големи стойности)
+fmt = "{:.4f}" if current_p < 1000 else "{:.2f}"
+ema_col1.metric(label="EMA 8 (Бърза)", value=fmt.format(ema8_p))
+ema_col2.metric(label="EMA 14 (Средна)", value=fmt.format(ema14_p))
+ema_col3.metric(label="EMA 21 (Бавна)", value=fmt.format(ema21_p))
 
-# Плавно опресняване на реалното време
-time.sleep(1)
+# Опресняване на всеки 0.2 секунди за максимална точност при 5s, 15s и 30s таймери
+time.sleep(0.2)
 st.rerun()
