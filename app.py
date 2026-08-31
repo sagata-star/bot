@@ -86,13 +86,13 @@ selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_ass
 # Добавени Времеви диапазони за 5с, 15с, 30с заедно с 1м, 3м, 5м, 10м
 timeframe_label = st.sidebar.selectbox(
     "Времеви диапазон (Таймфрейм):",
-    options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"],
+    options=["5 сек", "15 сек", "30s", "1 мин", "3 мин", "5 мин", "10 мин"],
     index=3
 )
 
 # Превръщане на таймфрейма в чисти секунди за математическите изчисления
 tf_mapping = {
-    "5 сек": 5, "15 сек": 15, "30 сек": 30,
+    "5 сек": 5, "15 сек": 15, "30s": 30,
     "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
 }
 tf_seconds = tf_mapping[timeframe_label]
@@ -130,11 +130,28 @@ ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА
+# ДЕФИНИРАНЕ НА ЦВЕТА НА АКТИВА ПРЕДИ ИЗЧЕРТАВАНЕ НА МЕТРИКИТЕ
+if ema8_p > ema14_p > ema21_p:
+    if current_p >= ema8_p: asset_color = "#00ff66"  # Зелено за Strong Buy
+    else: asset_color = "#ffaa00"                    # Оранжево за Weak Buy
+elif ema8_p < ema14_p < ema21_p:
+    if current_p <= ema8_p: asset_color = "#ff3333"  # Червено за Strong Sell
+    else: asset_color = "#ffaa00"                    # Оранжево за Weak Sell
+else:
+    asset_color = "#aaaaaa"                          # Сиво за No Signal
+
+# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА С УГОЛЕМЕН ЦВЕТЕН НАДПИС НА АКТИВА
 t_col1, t_col2, t_col3 = st.columns(3)
 t_col1.metric("🕒 Текущо време (Реално)", current_time_str)
 t_col2.metric(f"⏳ Таймер до следващ вход ({timeframe_label})", f"{remaining_seconds} сек.")
-t_col3.metric(f"Цена {selected_asset}", f"{current_p:.4f}" if current_p < 1000 else f"{current_p:.2f}")
+
+# Уголемяване и оцветяване на етикета на метриката чрез HTML инжекция в рамките на колоната
+with t_col3:
+    asset_label_html = f"<span style='font-size: 18px; font-weight: bold; color: {asset_color};'>Цена {selected_asset}</span>"
+    formatted_p = f"{current_p:.4f}" if current_p < 1000 else f"{current_p:.2f}"
+    st.metric(label="", value=formatted_p, help="Цветът показва текущия тренд")
+    st.markdown(f"<style>div[data-testid='stMetric'] label {{ display: none; }}</style>", unsafe_allow_html=True)
+    st.markdown(f"<div style='margin-top: -85px; margin-bottom: 45px;'>{asset_label_html}</div>", unsafe_allow_html=True)
 
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ СПРЯМО СЕКУНДНИЯ/МИНУТНИЯ ТАЙМФРЕЙМ
 st.write("---")
@@ -191,12 +208,3 @@ st.write("---")
 st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
 
 ema_col1, ema_col2, ema_col3 = st.columns(3)
-# Форматиране спрямо цената на актива (криптовалутите имат по-големи стойности)
-fmt = "{:.4f}" if current_p < 1000 else "{:.2f}"
-ema_col1.metric(label="EMA 8 (Бърза)", value=fmt.format(ema8_p))
-ema_col2.metric(label="EMA 14 (Средна)", value=fmt.format(ema14_p))
-ema_col3.metric(label="EMA 21 (Бавна)", value=fmt.format(ema21_p))
-
-# Опресняване на всеки 0.2 секунди за максимална точност при 5s, 15s и 30s таймери
-time.sleep(0.2)
-st.rerun()
