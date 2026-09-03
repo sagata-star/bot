@@ -98,13 +98,11 @@ tf_mapping = {
 }
 tf_seconds = tf_mapping[timeframe_label]
 
-# ПОДОБРЕНИЕ 1: Динамично определяне на EMA периодите на база таймфрейма
+# Динамично определяне на EMA периодите на база таймфрейма
 if tf_seconds < 60:
-    # За секундни рамки (5s, 15s, 30s) изглаждаме пазарния шум с по-големи периоди
     p_fast, p_med, p_slow = 12, 24, 50
     ema_mode_text = "Адаптивен секунден филтър (EMA 12/24/50)"
 else:
-    # За минутни рамки използваме бързия стандартен комплект
     p_fast, p_med, p_slow = 8, 14, 21
     ema_mode_text = "Стандартен минутен импулс (EMA 8/14/21)"
 
@@ -139,9 +137,9 @@ ema_f_p = df['EMA_FAST'].iloc[-1]
 ema_m_p = df['EMA_MED'].iloc[-1]
 ema_s_p = df['EMA_SLOW'].iloc[-1]
 
-# ПОДОБРЕНИЕ 2: Изчисляване на спреда/разстоянието между EMA за филтриране на ниска волатилност
+# Изчисляване на спреда/разстоянието между EMA за филтриране на ниска волатилност
 ema_spread = abs(ema_f_p - ema_s_p) / ema_s_p * 100
-is_volatile = ema_spread > 0.015  # Праг за филтриране на страничен флат
+is_volatile = ema_spread > 0.015
 
 # 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА
 t_col1, t_col2, t_col3 = st.columns(3)
@@ -154,7 +152,7 @@ else: fmt_str = "{:.2f}"
 
 t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
-# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ (С ВКЛЮЧЕНО ПОДОБРЕНИЕ ЗА ТАЙМФРЕЙМ)
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
 
 if ema_f_p > ema_m_p > ema_s_p:
@@ -201,3 +199,11 @@ else:
     buy_ratio = random.randint(47, 53)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
+    signal_func = st.info
+    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): На база {timeframe_label} линиите се преплитат хаотично. Пазарът няма посока."
+
+sig_col1, sig_col2 = st.columns(2)
+
+with sig_col1:
+    st.markdown(arrow_html, unsafe_allow_html=True)
+
