@@ -30,12 +30,9 @@ st.markdown("""
 
 # 3. --- ОБНОВЕН СПИСЪК С НАД 80 OTC АКТИВА НА POCKET OPTION ---
 all_otc_assets = [
-    # Новите валутни двойки поискани от потребителя
     "BHD/CNY (OTC)", "CHF/NOK (OTC)", "EUR/TRY (OTC)", "LBP/USD (OTC)", 
     "MAD/USD (OTC)", "OMR/CNY (OTC)", "USD/ARC (OTC)", "USD/COP (OTC)", 
     "USD/MYR (OTC)", "ZAR/USD (OTC)", "USD/PKR (OTC)", "GBP/JPY (OTC 2)",
-    
-    # Предишни активи
     "BTC/USD (OTC)", "ETH/USD (OTC)", "LTC/USD (OTC)", "USDT/RUB (OTC)",
     "US Tech 100 (OTC)", "US SPX 500 (OTC)", "Germany 40 (OTC)", 
     "AUD/CHF (OTC)", "EUR/NZD (OTC)", "GBP/NZD (OTC)",
@@ -109,12 +106,10 @@ is_seconds_tf = tf_seconds < 60
 if is_seconds_tf:
     p_fast, p_mid, p_slow = 12, 24, 50
     ema_label_suffix = " (Секунден филтър)"
-    # Праг за ниска волатилност при секундни периоди (по-дълги периоди = по-малко разстояние)
     volatility_threshold = 0.04  
 else:
     p_fast, p_mid, p_slow = 8, 14, 21
     ema_label_suffix = " (Минутен импулс)"
-    # Праг за ниска волатилност при минутни периоди
     volatility_threshold = 0.02  
 
 st.sidebar.markdown("---")
@@ -175,7 +170,7 @@ t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
 
-# Филтър за ниска волатилност (Линиите са слепени)
+# Филтър за ниска волатилност
 if is_low_volatility:
     buy_ratio = random.randint(48, 52)
     sell_ratio = 100 - buy_ratio
@@ -183,7 +178,6 @@ if is_low_volatility:
     signal_func = st.warning
     status_text = f"❌ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са прекалено близки (Разстояние: {ema_spread_pct:.3f}%). Изчакайте пазарно разширение!"
 
-# Стандартна логика, ако волатилността е нормална
 elif ema_fast_p > ema_mid_p > ema_slow_p:
     if current_p >= ema_fast_p:
         buy_ratio = random.randint(85, 96)
@@ -210,3 +204,10 @@ elif ema_fast_p < ema_mid_p < ema_slow_p:
         buy_ratio = 100 - sell_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
         signal_func = st.warning
+        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА {p_fast} за {timeframe_label}. Изчакайте!"
+
+else:
+    buy_ratio = random.randint(47, 53)
+    sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
+    signal_func = st.info
