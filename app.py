@@ -103,7 +103,7 @@ tf_mapping = {
 }
 tf_seconds = tf_mapping[timeframe_label]
 
-# --- ОПРЕДЕЛЯНЕ НА ДИНАМИЧНИТЕ ПЕРИОДИ И ПРАГОВЕ ---
+# --- ОПРЕДЕЛЯНЕ НА АДАПТИВНИТЕ ПЕРИОДИ И ПРАГОВЕ ЗА ВОЛАТИЛНОСТ ---
 if tf_seconds < 60:
     p_fast, p_mid, p_slow = 12, 24, 50
     volatility_threshold = 0.02
@@ -133,7 +133,7 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на ЕМА показателите спрямо динамичните периоди
+# Изчисляване на ЕМА показателите (Запазени оригинални имена на ключовете в DataFrame)
 df['EMA_8'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
@@ -144,7 +144,7 @@ ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# Изчисляване на разстоянието между бързата и бавната линия (Волатилност)
+# Изчисляване на разстоянието между бързата и бавната линия за волатилност
 ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
 is_low_volatility = ema_spread_pct < volatility_threshold
 
@@ -163,13 +163,13 @@ t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ СПРЯМО СЕКУНДНИЯ/МИНУТНИЯ ТАЙМФРЕЙМ
 st.write("---")
 
-# Филтър за ниска волатилност
+# Добавен филтър за ниска волатилност
 if is_low_volatility:
     buy_ratio = random.randint(48, 52)
     sell_ratio = 100 - buy_ratio
-    arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД</div>"
+    arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
     signal_func = st.warning
-    status_text = f"❌ Линиите са прекалено близки (Разстояние: {ema_spread_pct:.3f}%). Изчакайте разширение!"
+    status_text = f"❌ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са прекалено близки. Изчакайте!"
 
 elif ema8_p > ema14_p > ema21_p:
     if current_p >= ema8_p:
@@ -183,7 +183,7 @@ elif ema8_p > ema14_p > ema21_p:
         sell_ratio = 100 - buy_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Възходящ тренд, но цената падна под ЕМА {p_fast} за {timeframe_label}. Изчакайте!"
+        status_text = f"⏳ КОРЕКЦИЯ: Възходящ тренд, но цената падна под ЕМА 8 за {timeframe_label}."
 
 elif ema8_p < ema14_p < ema21_p:
     if current_p <= ema8_p:
@@ -197,7 +197,7 @@ elif ema8_p < ema14_p < ema21_p:
         buy_ratio = 100 - sell_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА {p_fast} за {timeframe_label}. Изчакайте!"
+        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА 8 за {timeframe_label}."
 
 else:
     buy_ratio = random.randint(47, 53)
