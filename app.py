@@ -89,7 +89,7 @@ st.title("🤖 PO 3 EMA Bot Dashboard")
 
 selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_assets, index=0)
 
-# Синхронизиране на текстовите имена за всички таймфреймове
+# ПОПРАВКА: Синхронизиране на текстовите имена за всички таймфреймове
 timeframe_label = st.sidebar.selectbox(
     "Времеви диапазон (Таймфрейм):",
     options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"],
@@ -98,18 +98,18 @@ timeframe_label = st.sidebar.selectbox(
 
 # Превръщане на таймфрейма в чисти секунди за математическите изчисления
 tf_mapping = {
-    "5 сек": 5, "15 сек": 15, "30 сек": 30,
+    "5 сек": 5, "15 сек": 15, "30 sec": 30, "30 сек": 30, # Подсигуряване за 30s
     "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
 }
 tf_seconds = tf_mapping[timeframe_label]
 
-# --- ОПРЕДЕЛЯНЕ НА АДАПТИВНИТЕ ПЕРИОДИ И ПРАГОВЕ ЗА ВОЛАТИЛНОСТ ---
+# --- НАСТРОЙКА НА ДИНАМИЧНИ ПЕРИОДИ И ВОЛАТИЛНОСТ ---
 if tf_seconds < 60:
     p_fast, p_mid, p_slow = 12, 24, 50
-    volatility_threshold = 0.02
+    volatility_threshold = 0.015  # Изглаждане на шума за секунди
 else:
     p_fast, p_mid, p_slow = 8, 14, 21
-    volatility_threshold = 0.01
+    volatility_threshold = 0.008  # Бързи импулси за минути
 
 # 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
@@ -133,7 +133,7 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на ЕМА показателите (Запазени оригинални имена на ключовете в DataFrame)
+# Изчисляване на ЕМА показателите (Запазени оригинални имена на колоните)
 df['EMA_8'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
@@ -144,7 +144,7 @@ ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# Изчисляване на разстоянието между бързата и бавната линия за волатилност
+# Математическо разстояние в % между най-бързата и най-бавната ЕМА линия
 ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
 is_low_volatility = ema_spread_pct < volatility_threshold
 
@@ -163,13 +163,13 @@ t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ СПРЯМО СЕКУНДНИЯ/МИНУТНИЯ ТАЙМФРЕЙМ
 st.write("---")
 
-# Добавен филтър за ниска волатилност
+# Филтър за ниска волатилност (Линиите са залепени една за друга)
 if is_low_volatility:
-    buy_ratio = random.randint(48, 52)
+    buy_ratio = random.randint(49, 51)
     sell_ratio = 100 - buy_ratio
-    arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
+    arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД</div>"
     signal_func = st.warning
-    status_text = f"❌ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са прекалено близки. Изчакайте!"
+    status_text = f"❌ ФЛАТ/ШУМ: Линиите са прекалено близо ({ema_spread_pct:.3f}%) на база {timeframe_label}. Изчакайте!"
 
 elif ema8_p > ema14_p > ema21_p:
     if current_p >= ema8_p:
@@ -183,7 +183,7 @@ elif ema8_p > ema14_p > ema21_p:
         sell_ratio = 100 - buy_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Възходящ тренд, но цената падна под ЕМА 8 за {timeframe_label}."
+        status_text = f"⏳ КОРЕКЦИЯ: Възходящ тренд, но цената падна под ЕМА 8 за {timeframe_label}. Изчакайте!"
 
 elif ema8_p < ema14_p < ema21_p:
     if current_p <= ema8_p:
@@ -197,7 +197,7 @@ elif ema8_p < ema14_p < ema21_p:
         buy_ratio = 100 - sell_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА 8 за {timeframe_label}."
+        status_text = f"⏳ КОРЕКЦИЯ: Низходящ тренд, но цената се качи над ЕМА 8 за {timeframe_label}. Изчакайте!"
 
 else:
     buy_ratio = random.randint(47, 53)
@@ -209,8 +209,3 @@ else:
 sig_col1, sig_col2 = st.columns(2)
 
 with sig_col1:
-    st.markdown(arrow_html, unsafe_allow_html=True)
-
-with sig_col2:
-    st.subheader(f"📊 Пазарно съотношение ({timeframe_label})")
-    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
