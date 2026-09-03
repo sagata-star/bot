@@ -84,21 +84,49 @@ def generate_fresh_history(asset_name, tf_seconds):
         
     return pd.DataFrame({"Timestamp": times, "Price": prices})
 
-# 5. НАСТРОЙКИ В СТРАНИЧНИЯ ПАНЕЛ
+# 5. ИНИЦИАЛИЗАЦИЯ НА ИЗБОРИТЕ В SESSION STATE
+if "saved_asset" not in st.session_state:
+    st.session_state.saved_asset = all_otc_assets
+
+if "saved_tf_label" not in st.session_state:
+    st.session_state.saved_tf_label = "1 мин"
+
+# Намиране на индексите за запазените стойности
+try:
+    asset_index = all_otc_assets.index(st.session_state.saved_asset)
+except ValueError:
+    asset_index = 0
+
+timeframe_options = ["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"]
+try:
+    tf_index = timeframe_options.index(st.session_state.saved_tf_label)
+except ValueError:
+    tf_index = 3
+
+# НАСТРОЙКИ В СТРАНИЧНИЯ ПАНЕЛ
 st.title("🤖 PO 3 EMA Bot Dashboard")
 
-selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_assets, index=0)
+# Падащо меню за актив
+selected_asset = st.sidebar.selectbox(
+    "Избор на актив:", 
+    all_otc_assets, 
+    index=asset_index,
+    key="asset_selector"
+)
+st.session_state.saved_asset = selected_asset
 
-# ПОПРАВКА: Синхронизиране на текстовите имена за всички таймфреймове
+# Падащо меню за времеви диапазон (вече със заключване в паметта)
 timeframe_label = st.sidebar.selectbox(
     "Времеви диапазон (Таймфрейм):",
-    options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"],
-    index=3
+    options=timeframe_options,
+    index=tf_index,
+    key="tf_selector"
 )
+st.session_state.saved_tf_label = timeframe_label
 
-# Превръщане на таймфрейма в чисти секунди за математическите изчисления
+# Превръщане на таймфрейма в чисти секунди
 tf_mapping = {
-    "5 сек": 5, "15 сек": 15, "30 sec": 30, "30 сек": 30, # Подсигуряване за 30s
+    "5 сек": 5, "15 сек": 15, "30 сек": 30,
     "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
 }
 tf_seconds = tf_mapping[timeframe_label]
@@ -110,12 +138,12 @@ if "current_asset" not in st.session_state or st.session_state.current_asset != 
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
-# Изчисляване на таймера за затваряне на свещта в реално време
+# Изчисляване на таймера в реално време
 now = datetime.now()
 current_timestamp_bucket = int(time.time() / tf_seconds)
 remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
-# Проверка за нова свещ на база изтекли секунди/минути
+# Проверка за нова свещ
 if current_timestamp_bucket != st.session_state.last_update_timestamp:
     st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
@@ -141,14 +169,13 @@ t_col1, t_col2, t_col3 = st.columns(3)
 t_col1.metric("🕒 Текущо време (Реално)", current_time_str)
 t_col2.metric(f"⏳ Таймер до следващ вход ({timeframe_label})", f"{remaining_seconds} сек.")
 
-# Адаптивно десетично форматиране спрямо големината на цената
 if current_p < 0.01: fmt_str = "{:.6f}"
 elif current_p < 1000: fmt_str = "{:.4f}"
 else: fmt_str = "{:.2f}"
 
 t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
-# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ СПРЯМО СЕКУНДНИЯ/МИНУТНИЯ ТАЙМФРЕЙМ
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
 
 if ema8_p > ema14_p > ema21_p:
@@ -203,11 +230,3 @@ st.write("---")
 st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
 
 ema_col1, ema_col2, ema_col3 = st.columns(3)
-# ПОПРАВКА: Изчистена софтуерна дефиниция на формата
-ema_col1.metric(label="EMA 8 (Бърза)", value=fmt_str.format(ema8_p))
-ema_col2.metric(label="EMA 14 (Средна)", value=fmt_str.format(ema14_p))
-ema_col3.metric(label="EMA 21 (Бавна)", value=fmt_str.format(ema21_p))
-
-# Опресняване на всеки 0.2 секунди за максимална точност
-time.sleep(0.2)
-st.rerun()
