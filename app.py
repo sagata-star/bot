@@ -53,7 +53,7 @@ all_otc_assets = [
     "NVIDIA (OTC)", "NETFLIX (OTC)"
 ]
 
-# 4. Функция за генериране на по-дълга базова история (за избягване на софтуерни грешки при EMA 50)
+# 4. Функция за генериране на базова история
 def generate_fresh_history(asset_name, tf_seconds):
     if "JPY" in asset_name: base_price = 145.25
     elif "CHF" in asset_name and "JPY" not in asset_name: base_price = 0.8950
@@ -71,11 +71,10 @@ def generate_fresh_history(asset_name, tf_seconds):
 
     prices = []
     times = []
-    # Генерираме 200 свещи история, за да има достатъчно данни за бавната ЕМА 50
-    current_time = datetime.now() - timedelta(seconds=200 * tf_seconds)
+    current_time = datetime.now() - timedelta(seconds=250 * tf_seconds)
     current_price = base_price
     
-    for i in range(200):
+    for i in range(250):
         current_price += random.uniform(-base_price * 0.0005, base_price * 0.0005)
         prices.append(current_price)
         times.append(current_time + timedelta(seconds=i * tf_seconds))
@@ -99,20 +98,16 @@ tf_mapping = {
 }
 tf_seconds = tf_mapping[timeframe_label]
 
-# --- ИЗИСКВАНЕ 1: АДАПТИВНИ ЕМА ПЕРИОДИ И ПРАГОВЕ ЗА ВОЛАТИЛНОСТ ---
+# Адаптивни ЕМА периоди и прагове за волатилност
 if tf_seconds < 60:
-    p_fast = 12
-    p_mid = 24
-    p_slow = 50
-    volatility_threshold = 0.025  # Праг за секунден пазарен шум
+    p_fast, p_mid, p_slow = 12, 24, 50
+    volatility_threshold = 0.025
 else:
-    p_fast = 8
-    p_mid = 14
-    p_slow = 21
-    volatility_threshold = 0.012  # Праг за минутни импулси
+    p_fast, p_mid, p_slow = 8, 14, 21
+    volatility_threshold = 0.012
 
 st.sidebar.write("---")
-st.sidebar.markdown(f"📊 **Динамични Period настройки:**")
+st.sidebar.markdown(f"📊 **Динамични настройки:**")
 st.sidebar.text(f"Бърза: EMA {p_fast}")
 st.sidebar.text(f"Средна: EMA {p_mid}")
 st.sidebar.text(f"Бавна: EMA {p_slow}")
@@ -124,20 +119,26 @@ if "current_asset" not in st.session_state or st.session_state.current_asset != 
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
+# Изчисляване на таймерите в реално време (Всяка секунда)
 now = datetime.now()
 current_timestamp_bucket = int(time.time() / tf_seconds)
 remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
+# Проверка за нова свещ или симулация на тиково движение
 if current_timestamp_bucket != st.session_state.last_update_timestamp:
     st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
     new_price = last_price + random.uniform(-last_price * 0.0005, last_price * 0.0005)
     new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
     st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
+else:
+    # Оптимизация: Симулираме леко движение на цената всяка секунда без преизчисляване на цялата история
+    last_price = st.session_state.df_history["Price"].iloc[-1]
+    st.session_state.df_history.iloc[-1, st.session_state.df_history.columns.get_loc("Price")] = last_price + random.uniform(-last_price * 0.0001, last_price * 0.0001)
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на ЕМА показателите спрямо динамичните променливи периода
+# Изчисляване на динамичните ЕМА
 df['EMA_8'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
@@ -148,7 +149,7 @@ ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
 ema21_p = df['EMA_21'].iloc[-1]
 
-# --- ИЗИСКВАНЕ 2: ИНДИКАТОР ЗА ВОЛАТИЛНОСТ ---
+# Индикатор за волатилност
 ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
 is_low_volatility = ema_spread_pct < volatility_threshold
 
@@ -166,9 +167,8 @@ t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
 
-# Принудително блокиране при ниска волатилност (Линиите се слепят)
 if is_low_volatility:
-    buy_ratio = random.randint(49, 51)  # Занижено/изравнено пазарно съотношение
+    buy_ratio = random.randint(49, 51)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
     signal_func = st.warning
@@ -216,4 +216,3 @@ with sig_col1:
 
 with sig_col2:
     st.subheader(f"📊 Пазарно съотношение ({timeframe_label})")
-    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
