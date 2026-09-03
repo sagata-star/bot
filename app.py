@@ -93,9 +93,9 @@ timeframe_label = st.sidebar.selectbox(
     index=3
 )
 
-# Превръщане на таймфрейма в чисти секунди за математическите изчисления
+# ПОПРАВЕНО: Точно съответствие на низовете без дублиращи се ключове
 tf_mapping = {
-    "5 сек": 5, "15 сек": 15, "30 sec": 30, "30 сек": 30,
+    "5 сек": 5, "15 сек": 15, "30 сек": 30,
     "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
 }
 tf_seconds = tf_mapping[timeframe_label]
@@ -106,11 +106,11 @@ is_seconds_tf = tf_seconds < 60
 if is_seconds_tf:
     p_fast, p_mid, p_slow = 12, 24, 50
     ema_label_suffix = " (Секунден филтър)"
-    volatility_threshold = 0.04  
+    volatility_threshold = 0.015  # Оптимизиран праг за секунди (по-дълги ЕМА линии)
 else:
     p_fast, p_mid, p_slow = 8, 14, 21
     ema_label_suffix = " (Минутен импулс)"
-    volatility_threshold = 0.02  
+    volatility_threshold = 0.008  # Оптимизиран праг за краткосрочни импулси
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"**Активни ЕМА периоди:**")
@@ -140,7 +140,7 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на динамичните ЕМА показатели
+# Изчисляване на динамичните ЕМА показатели върху копирания DataFrame
 df['EMA_FAST'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
 df['EMA_MID'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
 df['EMA_SLOW'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
@@ -176,7 +176,7 @@ if is_low_volatility:
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
     signal_func = st.warning
-    status_text = f"❌ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са прекалено близки (Разстояние: {ema_spread_pct:.3f}%). Изчакайте пазарно разширение!"
+    status_text = f"❌ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са прекалено близки (Разстояние: {ema_spread_pct:.4f}%). Изчакайте пазарно разширение!"
 
 elif ema_fast_p > ema_mid_p > ema_slow_p:
     if current_p >= ema_fast_p:
@@ -209,5 +209,3 @@ elif ema_fast_p < ema_mid_p < ema_slow_p:
 else:
     buy_ratio = random.randint(47, 53)
     sell_ratio = 100 - buy_ratio
-    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
-    signal_func = st.info
