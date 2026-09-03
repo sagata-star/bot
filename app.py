@@ -84,45 +84,34 @@ def generate_fresh_history(asset_name, tf_seconds):
         
     return pd.DataFrame({"Timestamp": times, "Price": prices})
 
-# 5. ИНИЦИАЛИЗАЦИЯ НА ИЗБОРИТЕ В SESSION STATE
+# 5. ИНИЦИАЛИЗАЦИЯ НА ИЗБОРА В SESSION STATE
 if "saved_asset" not in st.session_state:
-    st.session_state.saved_asset = all_otc_assets
+    st.session_state.saved_asset = all_otc_assets[0]
 
-if "saved_tf_label" not in st.session_state:
-    st.session_state.saved_tf_label = "1 мин"
-
-# Намиране на индексите за запазените стойности
+# Намиране на текущия индекс на запазения актив в списъка
 try:
-    asset_index = all_otc_assets.index(st.session_state.saved_asset)
+    default_index = all_otc_assets.index(st.session_state.saved_asset)
 except ValueError:
-    asset_index = 0
-
-timeframe_options = ["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"]
-try:
-    tf_index = timeframe_options.index(st.session_state.saved_tf_label)
-except ValueError:
-    tf_index = 3
+    default_index = 0
 
 # НАСТРОЙКИ В СТРАНИЧНИЯ ПАНЕЛ
 st.title("🤖 PO 3 EMA Bot Dashboard")
 
-# Падащо меню за актив
+# Падащото меню приема запазения индекс и обновява session_state при промяна
 selected_asset = st.sidebar.selectbox(
     "Избор на актив:", 
     all_otc_assets, 
-    index=asset_index,
+    index=default_index,
     key="asset_selector"
 )
 st.session_state.saved_asset = selected_asset
 
-# Падащо меню за времеви диапазон (вече със заключване в паметта)
+# Избор на времеви диапазон
 timeframe_label = st.sidebar.selectbox(
     "Времеви диапазон (Таймфрейм):",
-    options=timeframe_options,
-    index=tf_index,
-    key="tf_selector"
+    options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"],
+    index=3
 )
-st.session_state.saved_tf_label = timeframe_label
 
 # Превръщане на таймфрейма в чисти секунди
 tf_mapping = {
@@ -230,3 +219,10 @@ st.write("---")
 st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
 
 ema_col1, ema_col2, ema_col3 = st.columns(3)
+ema_col1.metric(label="EMA 8 (Бърза)", value=fmt_str.format(ema8_p))
+ema_col2.metric(label="EMA 14 (Средна)", value=fmt_str.format(ema14_p))
+ema_col3.metric(label="EMA 21 (Бавна)", value=fmt_str.format(ema21_p))
+
+# Опресняване на всеки 0.2 секунди
+time.sleep(0.2)
+st.rerun()
