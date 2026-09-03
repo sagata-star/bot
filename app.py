@@ -28,14 +28,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. --- ОБНОВЕН СПИСЪК С НАД 70 OTC АКТИВА НА POCKET OPTION (+10 НОВИ) ---
+# 3. --- ОБНОВЕН СПИСЪК С НАД 80 OTC АКТИВА НА POCKET OPTION (+НОВИТЕ ДОБАВЕНИ) ---
 all_otc_assets = [
-    # Нови 10 добавени актива (Крипто, Индекси и Валути)
+    # Новите валутни двойки поискани от потребителя
+    "BHD/CNY (OTC)", "CHF/NOK (OTC)", "EUR/TRY (OTC)", "LBP/USD (OTC)", 
+    "MAD/USD (OTC)", "OMR/CNY (OTC)", "USD/ARC (OTC)", "USD/COP (OTC)", 
+    "USD/MYR (OTC)", "ZAR/USD (OTC)", "USD/PKR (OTC)", "GBP/JPY (OTC 2)",
+    
+    # Предишни активи
     "BTC/USD (OTC)", "ETH/USD (OTC)", "LTC/USD (OTC)", "USDT/RUB (OTC)",
     "US Tech 100 (OTC)", "US SPX 500 (OTC)", "Germany 40 (OTC)", 
     "AUD/CHF (OTC)", "EUR/NZD (OTC)", "GBP/NZD (OTC)",
-    
-    # Предишни активи
     "EUR/USD (OTC)", "GBP/USD (OTC)", "USD/JPY (OTC)", "AUD/USD (OTC)",
     "EUR/GBP (OTC)", "USD/CAD (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
     "GBP/JPY (OTC)", "EUR/CAD (OTC)", "AUD/CAD (OTC)", "USD/CHF (OTC)",
@@ -62,6 +65,9 @@ def generate_fresh_history(asset_name, tf_seconds):
     elif "BTC" in asset_name: base_price = 64500.00
     elif "ETH" in asset_name: base_price = 3450.00
     elif "US Tech" in asset_name or "SPX" in asset_name: base_price = 5400.00
+    elif "COP" in asset_name: base_price = 4150.00  # Специфична базова цена за Колумбийско песо
+    elif "PKR" in asset_name: base_price = 278.00   # Пакистанска рупия
+    elif "LBP" in asset_name: base_price = 0.000011 # Ливанска лира
     elif any(x in asset_name for x in ["APPLE", "GOOGLE", "META", "NVIDIA", "NETFLIX", "TESLA", "MICROSOFT", "AMAZON"]):
         base_price = random.uniform(150.00, 450.00)
     else: base_price = 1.1234
@@ -81,18 +87,18 @@ def generate_fresh_history(asset_name, tf_seconds):
 # 5. НАСТРОЙКИ В СТРАНИЧНИЯ ПАНЕЛ
 st.title("🤖 PO 3 EMA Bot Dashboard")
 
-selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_assets, index=10)
+selected_asset = st.sidebar.selectbox("Избор на актив:", all_otc_assets, index=0)
 
 # Добавени Времеви диапазони за 5с, 15с, 30с заедно с 1м, 3м, 5м, 10м
 timeframe_label = st.sidebar.selectbox(
     "Времеви диапазон (Таймфрейм):",
-    options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"],
+    options=["5 сек", "15 сек", "30s", "1 мин", "3 мин", "5 мин", "10 мин"],
     index=3
 )
 
 # Превръщане на таймфрейма в чисти секунди за математическите изчисления
 tf_mapping = {
-    "5 сек": 5, "15 сек": 15, "30 сек": 30,
+    "5 сек": 5, "15 сек": 15, "30s": 30,
     "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
 }
 tf_seconds = tf_mapping[timeframe_label]
@@ -134,7 +140,13 @@ ema21_p = df['EMA_21'].iloc[-1]
 t_col1, t_col2, t_col3 = st.columns(3)
 t_col1.metric("🕒 Текущо време (Реално)", current_time_str)
 t_col2.metric(f"⏳ Таймер до следващ вход ({timeframe_label})", f"{remaining_seconds} сек.")
-t_col3.metric(f"Цена {selected_asset}", f"{current_p:.4f}" if current_p < 1000 else f"{current_p:.2f}")
+
+# Адаптивно десетично форматиране спрямо големината на цената (екзотичните активи имат много знаци)
+if current_p < 0.01: fmt_str = "{:.6f}"
+elif current_p < 1000: fmt_str = "{:.4f}"
+else: fmt_str = "{:.2f}"
+
+t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ СПРЯМО СЕКУНДНИЯ/МИНУТНИЯ ТАЙМФРЕЙМ
 st.write("---")
@@ -191,12 +203,10 @@ st.write("---")
 st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
 
 ema_col1, ema_col2, ema_col3 = st.columns(3)
-# Форматиране спрямо цената на актива (криптовалутите имат по-големи стойности)
-fmt = "{:.4f}" if current_p < 1000 else "{:.2f}"
-ema_col1.metric(label="EMA 8 (Бърза)", value=fmt.format(ema8_p))
-ema_col2.metric(label="EMA 14 (Средна)", value=fmt.format(ema14_p))
-ema_col3.metric(label="EMA 21 (Бавна)", value=fmt.format(ema21_p))
+ema_col1.metric(label="EMA 8 (Бърза)", value=fmt_str.format(ema8_p))
+ema_col2.metric(label="EMA 14 (Средна)", value=fmt_str.format(ema14_p))
+ema_col3.metric(label="EMA 21 (Бавна)", value=fmt.format(ema21_p) if "fmt" in locals() else fmt_str.format(ema21_p))
 
-# Опресняване на всеки 0.2 секунди за максимална точност при 5s, 15s и 30s таймери
+# Опресняване на всеки 0.2 секунди за максимална точност
 time.sleep(0.2)
 st.rerun()
