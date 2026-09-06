@@ -124,7 +124,7 @@ now = datetime.now()
 current_timestamp_bucket = int(time.time() / tf_seconds)
 remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
-# Логика при настъпване на нова свещ (Опресняване спрямо зададения диапазон)
+# Логика при настъпване на нова свещ
 if current_timestamp_bucket != st.session_state.last_update_timestamp:
     st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
@@ -152,18 +152,22 @@ is_low_volatility = ema_spread_pct < volatility_threshold
 # --- МАТЕМАТИЧЕСКО ИЗЧИСЛЯВАНЕ НА СИЛАТА И ДОСТОВЕРНОСТТА НА СИГНАЛА ---
 if is_low_volatility:
     signal_accuracy = random.randint(8, 18)
+    status_label = "🚫 КРИТИЧНО НИСКА"
 elif ema8_p > ema14_p > ema21_p:
     base_acc = 72.0
     spread_bonus = min(16.0, (ema_spread_pct / volatility_threshold) * 4)
     price_bonus = 10.0 if current_p >= ema8_p else -8.0
     signal_accuracy = round(base_acc + spread_bonus + price_bonus, 1)
+    status_label = "💎 ВИСОКА ТОЧНОСТ" if signal_accuracy >= 85 else "✅ СТАБИЛЕН СИГНАЛ"
 elif ema8_p < ema14_p < ema21_p:
     base_acc = 72.0
     spread_bonus = min(16.0, (ema_spread_pct / volatility_threshold) * 4)
     price_bonus = 10.0 if current_p <= ema8_p else -8.0
     signal_accuracy = round(base_acc + spread_bonus + price_bonus, 1)
+    status_label = "💎 ВИСОКА ТОЧНОСТ" if signal_accuracy >= 85 else "✅ СТАБИЛЕН СИГНАЛ"
 else:
     signal_accuracy = random.randint(38, 49)
+    status_label = "⚠️ СРЕДНА/ФЛАТ"
 
 signal_accuracy = max(0.0, min(99.0, signal_accuracy))
 
@@ -214,8 +218,3 @@ elif ema8_p < ema14_p < ema21_p:
         buy_ratio = 100 - sell_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Цена над ЕМА {p_fast} за {timeframe_label}."
-
-else:
-    buy_ratio = random.randint(47, 53)
-    sell_ratio = 100 - buy_ratio
