@@ -71,10 +71,11 @@ def generate_fresh_history(asset_name, tf_seconds):
 
     prices = []
     times = []
-    current_time = datetime.now() - timedelta(seconds=250 * tf_seconds)
+    # ПОПРАВКА: Увеличаваме историята на 300 свещи, за да има достатъчно дълбочина за изчисление на бавната EMA 50
+    current_time = datetime.now() - timedelta(seconds=300 * tf_seconds)
     current_price = base_price
     
-    for i in range(250):
+    for i in range(300):
         current_price += random.uniform(-base_price * 0.0005, base_price * 0.0005)
         prices.append(current_price)
         times.append(current_time + timedelta(seconds=i * tf_seconds))
@@ -134,10 +135,10 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на индикаторите
-df['EMA_8'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
-df['EMA_14'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
-df['EMA_21'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
+# Изчисляване на индикаторите с подсигурен минимален брой редове (min_periods=1) за предотвратяване на софтуерни сривове
+df['EMA_8'] = df['Price'].ewm(span=p_fast, min_periods=1, adjust=False).mean()
+df['EMA_14'] = df['Price'].ewm(span=p_mid, min_periods=1, adjust=False).mean()
+df['EMA_21'] = df['Price'].ewm(span=p_slow, min_periods=1, adjust=False).mean()
 
 current_time_str = now.strftime("%H:%M:%S")
 current_p = df['Price'].iloc[-1]
@@ -216,5 +217,3 @@ elif ema8_p < ema14_p < ema21_p:
     else:
         sell_ratio = random.randint(60, 70)
         buy_ratio = 100 - sell_ratio
-        arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
-        signal_func = st.warning
