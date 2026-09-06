@@ -94,7 +94,7 @@ timeframe_label = st.sidebar.selectbox(
 
 tf_mapping = {
     "5 сек": 5, "15 сек": 15, "30 сек": 30,
-    "1 мин": 60, "3 мин": 180, "5 min": 300, "10 мин": 600
+    "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
 }
 tf_seconds = tf_mapping[timeframe_label]
 
@@ -118,7 +118,6 @@ if "current_asset" not in st.session_state or st.session_state.current_asset != 
     st.session_state.current_tf = tf_seconds
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
-    # Инициализиране на флагове за принудителна първоначална генерация на съотношението
     st.session_state.should_update_signal = True
 
 # Изчисляване на оставащите секунди на база реално време
@@ -127,13 +126,14 @@ remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
 # Логика при настъпване на нова свещ (когато времевият прозорец се смени)
 current_timestamp_bucket = int(time.time() / tf_seconds)
-if current_timestamp_bucket != st.session_state.last_update_timestamp_val := st.session_state.get('last_update_timestamp', 0) or remaining_seconds == tf_seconds:
+last_update_val = st.session_state.get('last_update_timestamp', 0)
+
+if current_timestamp_bucket != last_update_val or remaining_seconds == tf_seconds:
     st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
     new_price = last_price + random.uniform(-last_price * 0.0005, last_price * 0.0005)
     new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
     st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
-    # Поставяме маркер, че секундите са изтекли и ТРЯБВА да сменим картинката и пазарното съотношение
     st.session_state.should_update_signal = True
 
 df = st.session_state.df_history.copy()
@@ -165,7 +165,6 @@ t_col2.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 # 8. СРЕДЕН ПАНЕЛ: ИЗЧИСЛЯВАНЕ И СМЕНЯНЕ НА СИГНАЛИТЕ САМО ПРИ НОВА СВЕЩ
 st.write("---")
 
-# Ако е настъпила нова свещ (should_update_signal == True), преизчисляваме съотношенията и картинката
 if st.session_state.get('should_update_signal', True):
     if is_low_volatility:
         buy_ratio = random.randint(49, 51)
@@ -202,10 +201,16 @@ if st.session_state.get('should_update_signal', True):
             status_type = "warning"
             status_text = f"⏳ КОРЕКЦИЯ: Цена над ЕМА {p_fast} за {timeframe_label}."
 
-    else:
-        buy_ratio = random.randint(47, 53)
-        sell_ratio = 100 - buy_ratio
-        arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
-        status_type = "info"
-        status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Липса на ясна посока на {timeframe_label}."
+else:
+    buy_ratio = random.randint(47, 53)
+    sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
+    status_type = "info"
+    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Липса на ясна посока на {timeframe_label}."
     
+    # Запазваме стабилните стойности в сесията
+    st.session_state.cached_buy_ratio = buy_ratio
+    st.session_state.cached_sell_ratio = sell_ratio
+    st.session_state.cached_arrow_html = arrow_html
+    st.session_state.cached_status_type = status_type
+    st.session_state.cached_status_text = status_text
