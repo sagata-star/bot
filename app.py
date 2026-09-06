@@ -1,5 +1,5 @@
 import streamlit as st
-import time  # ПОПРАВКА: Модулът е добавен успешно тук за предотвратяване на срива
+import time
 import random
 import pandas as pd
 from datetime import datetime, timedelta
@@ -115,20 +115,27 @@ st.sidebar.text(f"Бърза: EMA {p_fast}")
 st.sidebar.text(f"Средна: EMA {p_mid}")
 st.sidebar.text(f"Бавна: EMA {p_slow}")
 
-# 6. СИНХРОНИЗАЦИЯ НА БАЗОВИТЕ ДАННИ И СЕСИЯТА
+# 6. КРИТИЧНА ПОПРАВКА: ИНИЦИАЛИЗИРАНЕ И БЕЗОПАСНО ПЪРВОНАЧАЛНО СЪЗДАВАНЕ НА СЕСИЯТА
+# Това подсигурява, че данните съществуват глобално преди стартиране на фрагмента против Бял екран
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
     st.session_state.current_asset = selected_asset
     st.session_state.current_tf = tf_seconds
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
-# 7. ОБЛАЧЕН ОПТИМИЗИРАН ФРАГМЕНТ (Премахва грешките и опреснява стабилно на 1 сек)
+# 7. ОБЛАЧЕН ОПТИМИЗИРАН ФРАГМЕНТ ЗА РЕАЛНО ВРЕМЕ
 @st.fragment(run_every=1.0)
 def display_dashboard():
+    # Защита: Ако по някаква причина паметта в облака се изчисти, изчакваме и я пресъздаваме веднага
+    if "df_history" not in st.session_state:
+        st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
+        st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
+
     now = datetime.now()
     current_timestamp_bucket = int(time.time() / tf_seconds)
     remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
+    # Логика за добавяне на свещ или актуализиране на текущ тик
     if current_timestamp_bucket != st.session_state.last_update_timestamp:
         st.session_state.last_update_timestamp = current_timestamp_bucket
         last_price = st.session_state.df_history["Price"].iloc[-1]
@@ -141,6 +148,7 @@ def display_dashboard():
 
     df = st.session_state.df_history.copy()
 
+    # Калкулиране на показателите с min_periods=1 защита
     df['EMA_8'] = df['Price'].ewm(span=p_fast, min_periods=1, adjust=False).mean()
     df['EMA_14'] = df['Price'].ewm(span=p_mid, min_periods=1, adjust=False).mean()
     df['EMA_21'] = df['Price'].ewm(span=p_slow, min_periods=1, adjust=False).mean()
@@ -154,6 +162,7 @@ def display_dashboard():
     ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
     is_low_volatility = ema_spread_pct < volatility_threshold
 
+    # Определяне на сигналите и достоверността
     if is_low_volatility:
         buy_ratio = random.randint(49, 51)
         sell_ratio = 100 - buy_ratio
@@ -186,13 +195,3 @@ def display_dashboard():
         spread_bonus = min(16.0, (ema_spread_pct / volatility_threshold) * 4)
         price_bonus = 10.0 if current_p <= ema8_p else -8.0
         signal_accuracy = round(base_acc + spread_bonus + price_bonus, 1)
-        status_label = "💎 ВИСОКА ТОЧНОСТ" if signal_accuracy >= 85 else "✅ СТАБИЛЕН СИГНАЛ"
-        
-        if current_p <= ema8_p:
-            sell_ratio = random.randint(85, 96)
-            buy_ratio = 100 - sell_ratio
-            arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
-            signal_func = st.error
-            status_text = f"🚨 СИЛЕН ИМПУЛС: Потвърден низходящ тренд на {timeframe_label}."
-        else:
-            sell_ratio = random.randint(60, 70)
