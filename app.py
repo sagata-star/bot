@@ -1,4 +1,4 @@
-import streamlit st
+import streamlit as st  # ПОПРАВКА: Синтаксисът е коригиран успешно тук
 import time
 import random
 import pandas as pd
@@ -193,7 +193,7 @@ t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
 st.write("---")
 
-# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ (ПОПРАВЕНИ ОТСТЪПИ И КОД)
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 if is_low_volatility:
     buy_ratio = random.randint(48, 52)
     sell_ratio = 100 - buy_ratio
@@ -219,4 +219,3 @@ elif ema8_p < ema14_p < ema21_p:
     if current_p <= ema8_p:
         sell_ratio = random.randint(85, 96)
         buy_ratio = 100 - sell_ratio
-        arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
