@@ -12,30 +12,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Автоматично опресняване на страницата на всяка 1 секунда (1000 милисекунди) без забиване
-st.components.v1.html(
-    """
-    <script>
-    window.parent.document.addEventListener('DOMContentLoaded', function() {
-        if (!window.parent.__custom_refresh_interval) {
-            window.parent.__custom_refresh_interval = setInterval(function() {
-                const buttons = window.parent.document.querySelectorAll('button');
-                // Алтернативно засичане или леко тригърване на рерън, но Streamlit се справя най-добре с чист рефреш
-                // За по-сигурно използваме стандартен празен елемент, който рестартира цикъла
-            }, 1000);
-        }
-    });
-    </script>
-    """,
-    height=0,
-)
-
-# Използваме вградения и най-сигурен метод за автоматично опресняване в секунди
-# Ако нямате инсталиран streamlit-autorefresh, този трик със сесията и изтичането поддържа ритъма
-if "refresh_counter" not in st.session_state:
-    st.session_state.refresh_counter = 0
-st.session_state.refresh_counter += 1
-
 # 2. Инжектиране на компактни CSS стилове
 st.markdown("""
     <style>
@@ -143,17 +119,13 @@ if "current_asset" not in st.session_state or st.session_state.current_asset != 
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
-# Изчисляване на оставащите секунди на база реално време
-now = datetime.now()
-remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
-
 # Логика при настъпване на нова свещ
 current_timestamp_bucket = int(time.time() / tf_seconds)
-if current_timestamp_bucket != st.session_state.last_update_timestamp or remaining_seconds == tf_seconds:
+if current_timestamp_bucket != st.session_state.last_update_timestamp:
     st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
     new_price = last_price + random.uniform(-last_price * 0.0005, last_price * 0.0005)
-    new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
+    new_row = pd.DataFrame({"Timestamp": [datetime.now()], "Price": [new_price]})
     st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
 
 df = st.session_state.df_history.copy()
@@ -172,15 +144,23 @@ ema21_p = df['EMA_21'].iloc[-1]
 ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
 is_low_volatility = ema_spread_pct < volatility_threshold
 
-# 7. ГОРЕН ПАНЕЛ: ТАЙМЕР И ЦЕНА
-t_col1, t_col2 = st.columns(2)
-t_col1.metric(f"⏳ Опресняване след ({timeframe_label})", f"{remaining_seconds} сек.")
-
+# Форматиране на цената
 if current_p < 0.01: fmt_str = "{:.6f}"
 elif current_p < 1000: fmt_str = "{:.4f}"
 else: fmt_str = "{:.2f}"
 
-t_col2.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
+# --- ИЗОЛИРАН ФРАГМЕНТ ЗА ЖИВО ОТБРОЯВАНЕ БЕЗ ПРЕМИГВАНЕ ---
+@st.fragment(run_every=1.0)
+def render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str):
+    # Изчисляване на оставащите секунди на база текущия реален Unix timestamp
+    remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
+    
+    t_col1, t_col2 = st.columns(2)
+    t_col1.metric(f"⏳ Опресняване след ({timeframe_label})", f"{remaining_seconds} сек.")
+    t_col2.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
+
+# Извикване на живия панел
+render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str)
 
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
@@ -222,3 +202,22 @@ elif ema8_p < ema14_p < ema21_p:
 
 else:
     buy_ratio = random.randint(47, 53)
+    sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
+    signal_func = st.info
+    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Липса на ясна посока на {timeframe_label}."
+
+sig_col1, sig_col2 = st.columns(2)
+
+with sig_col1:
+    st.markdown(arrow_html, unsafe_allow_html=True)
+
+with sig_col2:
+    st.subheader(f"📊 Пазарно съотношение ({timeframe_label})")
+    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
+    st.progress(buy_ratio / 100)
+    st.markdown(f"**Продавачи (Bears):** {sell_ratio}%")
+    signal_func(status_text)
+
+# 9. ДОЛЕН ПАНЕЛ: ТЕХНИЧЕСКИ ИНДИКАТОРИ НАЙ-ОТДОЛУ
+st.write("---")
