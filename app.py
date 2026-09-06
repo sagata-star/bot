@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit st
 import time
 import random
 import pandas as pd
@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Инжектиране на CSS стилове (Разрешено е скролирането, ако не се събира)
+# 2. Инжектиране на CSS стилове
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
@@ -21,7 +21,7 @@ st.markdown("""
         padding-bottom: 2rem !important; 
         padding-left: 1.5rem !important; 
         padding-right: 1.5rem !important;
-        overflow-y: auto !important; /* Разрешава нормално скролиране на страницата */
+        overflow-y: auto !important;
     }
     div[data-testid="stMetricValue"] { font-size: 20px !important; font-weight: bold; }
     div[data-testid="stMetricLabel"] { font-size: 12px !important; }
@@ -77,7 +77,6 @@ def generate_fresh_history(asset_name, tf_seconds):
 
     prices = []
     times = []
-    # Осигуряваме 350 свещи дълбочина, за да може бавната ЕМА 50 да се изчисли стабилно
     current_time = datetime.now() - timedelta(seconds=350 * tf_seconds)
     current_price = base_price
     
@@ -105,7 +104,7 @@ tf_mapping = {
 }
 tf_seconds = tf_mapping[timeframe_label]
 
-# Адаптивни ЕМА периоди и прагове за волатилност спрямо таймфрейма
+# Адаптивни ЕМА периоди и прагове за волатилност
 if tf_seconds < 60:
     p_fast, p_mid, p_slow = 12, 24, 50
     volatility_threshold = 0.025
@@ -119,7 +118,7 @@ st.sidebar.text(f"Бърза: EMA {p_fast}")
 st.sidebar.text(f"Средна: EMA {p_mid}")
 st.sidebar.text(f"Бавна: EMA {p_slow}")
 
-# 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ В СЕСИЯТА
+# 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
     st.session_state.current_asset = selected_asset
     st.session_state.current_tf = tf_seconds
@@ -131,7 +130,7 @@ now = datetime.now()
 current_timestamp_bucket = int(time.time() / tf_seconds)
 remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
-# Добавяне на нова свещ при изтичане на таймфрейма
+# Логика при настъпване на нова свещ
 if current_timestamp_bucket != st.session_state.last_update_timestamp:
     st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
@@ -139,13 +138,12 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
     new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
     st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
 else:
-    # Лек симулационен тик на пазара
     last_price = st.session_state.df_history["Price"].iloc[-1]
     st.session_state.df_history.iloc[-1, st.session_state.df_history.columns.get_loc("Price")] = last_price + random.uniform(-last_price * 0.0001, last_price * 0.0001)
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на динамичните индикатори със софтуерна защита min_periods=1
+# Изчисляване на индикаторите със защита min_periods=1
 df['EMA_8'] = df['Price'].ewm(span=p_fast, min_periods=1, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=p_mid, min_periods=1, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=p_slow, min_periods=1, adjust=False).mean()
@@ -195,7 +193,7 @@ t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
 st.write("---")
 
-# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ (ПОПРАВЕНИ ОТСТЪПИ И КОД)
 if is_low_volatility:
     buy_ratio = random.randint(48, 52)
     sell_ratio = 100 - buy_ratio
@@ -218,3 +216,7 @@ elif ema8_p > ema14_p > ema21_p:
         status_text = f"⏳ КОРЕКЦИЯ: Цена под ЕМА {p_fast} за {timeframe_label}."
 
 elif ema8_p < ema14_p < ema21_p:
+    if current_p <= ema8_p:
+        sell_ratio = random.randint(85, 96)
+        buy_ratio = 100 - sell_ratio
+        arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
