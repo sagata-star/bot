@@ -28,7 +28,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. --- СПИСЪК С OTC АКТИВА НА POCKET OPTION ---
+# 3. --- ОБНОВЕН СПИСЪК С НАД 80 OTC АКТИВА НА POCKET OPTION ---
 all_otc_assets = [
     "BHD/CNY (OTC)", "CHF/NOK (OTC)", "EUR/TRY (OTC)", "LBP/USD (OTC)", 
     "MAD/USD (OTC)", "OMR/CNY (OTC)", "USD/ARC (OTC)", "USD/COP (OTC)", 
@@ -119,13 +119,17 @@ if "current_asset" not in st.session_state or st.session_state.current_asset != 
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
-# Логика при настъпване на нова свещ
+# Изчисляване на времевата рамка
+now = datetime.now()
 current_timestamp_bucket = int(time.time() / tf_seconds)
+remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
+
+# Логика при настъпване на нова свещ (Опресняване спрямо зададения диапазон)
 if current_timestamp_bucket != st.session_state.last_update_timestamp:
     st.session_state.last_update_timestamp = current_timestamp_bucket
     last_price = st.session_state.df_history["Price"].iloc[-1]
     new_price = last_price + random.uniform(-last_price * 0.0005, last_price * 0.0005)
-    new_row = pd.DataFrame({"Timestamp": [datetime.now()], "Price": [new_price]})
+    new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
     st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
 
 df = st.session_state.df_history.copy()
@@ -135,6 +139,7 @@ df['EMA_8'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
 
+current_time_str = now.strftime("%H:%M:%S")
 current_p = df['Price'].iloc[-1]
 ema8_p = df['EMA_8'].iloc[-1]
 ema14_p = df['EMA_14'].iloc[-1]
@@ -144,23 +149,16 @@ ema21_p = df['EMA_21'].iloc[-1]
 ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
 is_low_volatility = ema_spread_pct < volatility_threshold
 
-# Форматиране на цената
+# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА
+t_col1, t_col2, t_col3 = st.columns(3)
+t_col1.metric("🕒 Време на затваряне", current_time_str)
+t_col2.metric(f"⏳ Опресняване след ({timeframe_label})", f"{remaining_seconds} сек.")
+
 if current_p < 0.01: fmt_str = "{:.6f}"
 elif current_p < 1000: fmt_str = "{:.4f}"
 else: fmt_str = "{:.2f}"
 
-# --- ИЗОЛИРАН ФРАГМЕНТ ЗА ЖИВО ОТБРОЯВАНЕ БЕЗ ПРЕМИГВАНЕ ---
-@st.fragment(run_every=1.0)
-def render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str):
-    # Изчисляване на оставащите секунди на база текущия реален Unix timestamp
-    remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
-    
-    t_col1, t_col2 = st.columns(2)
-    t_col1.metric(f"⏳ Опресняване след ({timeframe_label})", f"{remaining_seconds} сек.")
-    t_col2.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
-
-# Извикване на живия панел
-render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str)
+t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
 # 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
@@ -221,3 +219,7 @@ with sig_col2:
 
 # 9. ДОЛЕН ПАНЕЛ: ТЕХНИЧЕСКИ ИНДИКАТОРИ НАЙ-ОТДОЛУ
 st.write("---")
+st.markdown(f"##### 📊 Технически индикатори за {selected_asset}")
+
+ema_col1, ema_col2, ema_col3 = st.columns(3)
+ema_col1.metric(label=f"EMA {p_fast} (Бърза)", value=fmt_str.format(ema8_p))
