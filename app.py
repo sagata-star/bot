@@ -120,8 +120,8 @@ if "current_asset" not in st.session_state or st.session_state.current_asset != 
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
-# 7. СУПЕР ЛЕК ФРАГМЕНТ ЗА РЕАЛНО ВРЕМЕ (Опреснява автоматично всяка секунда без сривове)
-@st.fragment(run_every=1.0)
+# 7. СПОКОЕН ФРАГМЕНТ ЗА ВИЗУАЛИЗАЦИЯ (Опреснява на всеки 2.0 секунди за леко зареждане)
+@st.fragment(run_every=2.0)
 def render_realtime_dashboard():
     now = datetime.now()
     current_timestamp_bucket = int(time.time() / tf_seconds)
