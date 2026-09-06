@@ -1,4 +1,5 @@
 import streamlit as st
+import time  # ПОПРАВКА: Модулът е добавен успешно тук за предотвратяване на срива
 import random
 import pandas as pd
 from datetime import datetime, timedelta
@@ -121,8 +122,7 @@ if "current_asset" not in st.session_state or st.session_state.current_asset != 
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
-# 7. ОБЛАЧЕН ОПТИМИЗИРАН ФРАГМЕНТ (Премахва st.rerun() и time.sleep())
-# run_every=1.0 казва на облачния сървър автоматично и безопасно да обновява само интерфейса
+# 7. ОБЛАЧЕН ОПТИМИЗИРАН ФРАГМЕНТ (Премахва грешките и опреснява стабилно на 1 сек)
 @st.fragment(run_every=1.0)
 def display_dashboard():
     now = datetime.now()
