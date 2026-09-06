@@ -12,19 +12,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Инжектиране на компактни CSS стилове
+# 2. ИНЖЕКТИРАНЕ НА CSS ЗА МАКСИМАЛНО СВИВАНЕ И МАЩАБИРАНЕ НА ИНТЕРФЕЙСА
 st.markdown("""
     <style>
-    .main { background-color: #1c1f26; }
-    div[data-testid="stMetricValue"] { font-size: 20px !important; font-weight: bold; }
-    div[data-testid="stMetricLabel"] { font-size: 12px !important; }
-    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-    h1 { font-size: 24px !important; margin-bottom: 5px !important; }
-    h5 { font-size: 14px !important; margin-top: 5px !important; margin-bottom: 5px !important; }
+    /* Премахване на абсолютно всички празни пространства в Streamlit */
+    .block-container { padding-top: 0.5rem !important; padding-bottom: 0px !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+    div[data-testid="stVerticalBlock"] { gap: 4px !important; }
+    div[data-testid="stMetricValue"] { font-size: 16px !important; font-weight: bold; line-height: 1.1 !important; }
+    div[data-testid="stMetricLabel"] { font-size: 11px !important; margin-bottom: 0px !important; }
     
-    /* Стил за голямата цветна стрелка и текст */
-    .direction-arrow { font-size: 70px !important; font-weight: bold; text-align: center; line-height: 1; }
-    .direction-text { font-size: 28px !important; font-weight: bold; text-align: center; }
+    /* Мащабиране на заглавията */
+    h1 { font-size: 18px !important; margin-top: 0px !important; margin-bottom: 2px !important; padding: 0px !important; }
+    h3 { font-size: 13px !important; margin-top: 0px !important; margin-bottom: 2px !important; }
+    h5 { font-size: 12px !important; margin-top: 2px !important; margin-bottom: 2px !important; }
+    
+    /* Компактни размери за голямата цветна стрелка и тренд текста */
+    .direction-arrow { font-size: 40px !important; font-weight: bold; text-align: center; line-height: 1; margin: 0px !important; }
+    .direction-text { font-size: 18px !important; font-weight: bold; text-align: center; margin: 0px !important; }
+    
+    /* Фини разделителни линии */
+    .compact-hr { margin-top: 3px !important; margin-bottom: 3px !important; border: 0; border-top: 1px solid #333; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -71,7 +78,6 @@ def generate_fresh_history(asset_name, tf_seconds):
 
     prices = []
     times = []
-    # ПОПРАВКА: Увеличаваме историята на 300 свещи, за да има достатъчно дълбочина за изчисление на бавната EMA 50
     current_time = datetime.now() - timedelta(seconds=300 * tf_seconds)
     current_price = base_price
     
@@ -135,7 +141,7 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на индикаторите с подсигурен минимален брой редове (min_periods=1) за предотвратяване на софтуерни сривове
+# Изчисляване на индикаторите със защита
 df['EMA_8'] = df['Price'].ewm(span=p_fast, min_periods=1, adjust=False).mean()
 df['EMA_14'] = df['Price'].ewm(span=p_mid, min_periods=1, adjust=False).mean()
 df['EMA_21'] = df['Price'].ewm(span=p_slow, min_periods=1, adjust=False).mean()
@@ -183,15 +189,16 @@ else: fmt_str = "{:.2f}"
 
 t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
-# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
-st.write("---")
+# Компактен разделител
+st.markdown("<hr class='compact-hr'>", unsafe_allow_html=True)
 
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 if is_low_volatility:
     buy_ratio = random.randint(49, 51)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
     signal_func = st.warning
-    status_text = f"⚠️ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са слепени под прага от {volatility_threshold}%. Изчакайте!"
+    status_text = f"⚠️ НИСКА ВОЛАТИЛНОСТ: Линиите са слепени под прага от {volatility_threshold}%."
 
 elif ema8_p > ema14_p > ema21_p:
     if current_p >= ema8_p:
@@ -199,21 +206,12 @@ elif ema8_p > ema14_p > ema21_p:
         sell_ratio = 100 - buy_ratio
         arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>STRONG BUY</div>"
         signal_func = st.success
-        status_text = f"🔥 СИЛЕН ИМПУЛС: Линиите потвърждават възходящ тренд на {timeframe_label}."
+        status_text = f"🔥 СИЛЕН ИМПУЛС: Потвърден възходящ тренд на {timeframe_label}."
     else:
         buy_ratio = random.randint(60, 70)
         sell_ratio = 100 - buy_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
         signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Цена под ЕМА {p_fast} за {timeframe_label}."
+        status_text = f"⏳ КОРЕКЦИЯ: Цена под ЕМА {p_fast}."
 
 elif ema8_p < ema14_p < ema21_p:
-    if current_p <= ema8_p:
-        sell_ratio = random.randint(85, 96)
-        buy_ratio = 100 - sell_ratio
-        arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
-        signal_func = st.error
-        status_text = f"🚨 СИЛЕН ИМПУЛС: Линиите потвърждават низходящ тренд на {timeframe_label}."
-    else:
-        sell_ratio = random.randint(60, 70)
-        buy_ratio = 100 - sell_ratio
