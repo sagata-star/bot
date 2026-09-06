@@ -12,22 +12,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. CSS за максимално мащабиране и събиране на целия екран в облака
+# 2. Инжектиране на CSS стилове (Разрешено е скролирането, ако не се събира)
 st.markdown("""
     <style>
     .main { background-color: #1c1f26; }
-    .block-container { padding-top: 0.2rem !important; padding-bottom: 0px !important; padding-left: 1rem !important; padding-right: 1rem !important; }
-    div[data-testid="stVerticalBlock"] { gap: 2px !important; }
-    div[data-testid="stMetricValue"] { font-size: 15px !important; font-weight: bold; line-height: 1.0 !important; }
-    div[data-testid="stMetricLabel"] { font-size: 10px !important; margin-bottom: 0px !important; }
+    .block-container { 
+        padding-top: 1rem !important; 
+        padding-bottom: 2rem !important; 
+        padding-left: 1.5rem !important; 
+        padding-right: 1.5rem !important;
+        overflow-y: auto !important; /* Разрешава нормално скролиране на страницата */
+    }
+    div[data-testid="stMetricValue"] { font-size: 20px !important; font-weight: bold; }
+    div[data-testid="stMetricLabel"] { font-size: 12px !important; }
+    h1 { font-size: 24px !important; margin-bottom: 5px !important; }
+    h5 { font-size: 14px !important; margin-top: 5px !important; margin-bottom: 5px !important; }
     
-    h1 { font-size: 16px !important; margin-top: 0px !important; margin-bottom: 1px !important; padding: 0px !important; }
-    h3 { font-size: 12px !important; margin-top: 0px !important; margin-bottom: 1px !important; }
-    h5 { font-size: 11px !important; margin-top: 1px !important; margin-bottom: 1px !important; }
-    
-    .direction-arrow { font-size: 35px !important; font-weight: bold; text-align: center; line-height: 1; margin: 0px !important; }
-    .direction-text { font-size: 16px !important; font-weight: bold; text-align: center; margin: 0px !important; }
-    .compact-hr { margin-top: 2px !important; margin-bottom: 2px !important; border: 0; border-top: 1px solid #333; }
+    /* Стил за голямата цветна стрелка и текст */
+    .direction-arrow { font-size: 65px !important; font-weight: bold; text-align: center; line-height: 1; }
+    .direction-text { font-size: 24px !important; font-weight: bold; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -74,6 +77,7 @@ def generate_fresh_history(asset_name, tf_seconds):
 
     prices = []
     times = []
+    # Осигуряваме 350 свещи дълбочина, за да може бавната ЕМА 50 да се изчисли стабилно
     current_time = datetime.now() - timedelta(seconds=350 * tf_seconds)
     current_price = base_price
     
@@ -101,7 +105,7 @@ tf_mapping = {
 }
 tf_seconds = tf_mapping[timeframe_label]
 
-# Адаптивни ЕМА периоди и прагове за волатилност
+# Адаптивни ЕМА периоди и прагове за волатилност спрямо таймфрейма
 if tf_seconds < 60:
     p_fast, p_mid, p_slow = 12, 24, 50
     volatility_threshold = 0.025
@@ -115,83 +119,102 @@ st.sidebar.text(f"Бърза: EMA {p_fast}")
 st.sidebar.text(f"Средна: EMA {p_mid}")
 st.sidebar.text(f"Бавна: EMA {p_slow}")
 
-# 6. КРИТИЧНА ПОПРАВКА: ИНИЦИАЛИЗИРАНЕ И БЕЗОПАСНО ПЪРВОНАЧАЛНО СЪЗДАВАНЕ НА СЕСИЯТА
-# Това подсигурява, че данните съществуват глобално преди стартиране на фрагмента против Бял екран
+# 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ В СЕСИЯТА
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
     st.session_state.current_asset = selected_asset
     st.session_state.current_tf = tf_seconds
     st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
     st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
 
-# 7. ОБЛАЧЕН ОПТИМИЗИРАН ФРАГМЕНТ ЗА РЕАЛНО ВРЕМЕ
-@st.fragment(run_every=1.0)
-def display_dashboard():
-    # Защита: Ако по някаква причина паметта в облака се изчисти, изчакваме и я пресъздаваме веднага
-    if "df_history" not in st.session_state:
-        st.session_state.df_history = generate_fresh_history(selected_asset, tf_seconds)
-        st.session_state.last_update_timestamp = int(time.time() / tf_seconds)
+# Изчисляване на времевата рамка
+now = datetime.now()
+current_timestamp_bucket = int(time.time() / tf_seconds)
+remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
 
-    now = datetime.now()
-    current_timestamp_bucket = int(time.time() / tf_seconds)
-    remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
+# Добавяне на нова свещ при изтичане на таймфрейма
+if current_timestamp_bucket != st.session_state.last_update_timestamp:
+    st.session_state.last_update_timestamp = current_timestamp_bucket
+    last_price = st.session_state.df_history["Price"].iloc[-1]
+    new_price = last_price + random.uniform(-last_price * 0.0005, last_price * 0.0005)
+    new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
+    st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
+else:
+    # Лек симулационен тик на пазара
+    last_price = st.session_state.df_history["Price"].iloc[-1]
+    st.session_state.df_history.iloc[-1, st.session_state.df_history.columns.get_loc("Price")] = last_price + random.uniform(-last_price * 0.0001, last_price * 0.0001)
 
-    # Логика за добавяне на свещ или актуализиране на текущ тик
-    if current_timestamp_bucket != st.session_state.last_update_timestamp:
-        st.session_state.last_update_timestamp = current_timestamp_bucket
-        last_price = st.session_state.df_history["Price"].iloc[-1]
-        new_price = last_price + random.uniform(-last_price * 0.0005, last_price * 0.0005)
-        new_row = pd.DataFrame({"Timestamp": [now], "Price": [new_price]})
-        st.session_state.df_history = pd.concat([st.session_state.df_history.iloc[1:], new_row], ignore_index=True)
-    else:
-        last_price = st.session_state.df_history["Price"].iloc[-1]
-        st.session_state.df_history.iloc[-1, st.session_state.df_history.columns.get_loc("Price")] = last_price + random.uniform(-last_price * 0.0001, last_price * 0.0001)
+df = st.session_state.df_history.copy()
 
-    df = st.session_state.df_history.copy()
+# Изчисляване на динамичните индикатори със софтуерна защита min_periods=1
+df['EMA_8'] = df['Price'].ewm(span=p_fast, min_periods=1, adjust=False).mean()
+df['EMA_14'] = df['Price'].ewm(span=p_mid, min_periods=1, adjust=False).mean()
+df['EMA_21'] = df['Price'].ewm(span=p_slow, min_periods=1, adjust=False).mean()
 
-    # Калкулиране на показателите с min_periods=1 защита
-    df['EMA_8'] = df['Price'].ewm(span=p_fast, min_periods=1, adjust=False).mean()
-    df['EMA_14'] = df['Price'].ewm(span=p_mid, min_periods=1, adjust=False).mean()
-    df['EMA_21'] = df['Price'].ewm(span=p_slow, min_periods=1, adjust=False).mean()
+current_time_str = now.strftime("%H:%M:%S")
+current_p = df['Price'].iloc[-1]
+ema8_p = df['EMA_8'].iloc[-1]
+ema14_p = df['EMA_14'].iloc[-1]
+ema21_p = df['EMA_21'].iloc[-1]
 
-    current_p = df['Price'].iloc[-1]
-    ema8_p = df['EMA_8'].iloc[-1]
-    ema14_p = df['EMA_14'].iloc[-1]
-    ema21_p = df['EMA_21'].iloc[-1]
+# Индикатор за волатилност
+ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
+is_low_volatility = ema_spread_pct < volatility_threshold
 
-    current_time_str = now.strftime("%H:%M:%S")
-    ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
-    is_low_volatility = ema_spread_pct < volatility_threshold
+# --- МАТЕМАТИЧЕСКА КАЛКУЛАЦИЯ ЗА СИЛАТА И ДОСТОВЕРНОСТТА НА СИГНАЛА ---
+if is_low_volatility:
+    signal_accuracy = random.randint(8, 18)
+    status_label = "🚫 КРИТИЧНО НИСКА"
+elif ema8_p > ema14_p > ema21_p:
+    base_acc = 72.0
+    spread_bonus = min(16.0, (ema_spread_pct / volatility_threshold) * 4)
+    price_bonus = 10.0 if current_p >= ema8_p else -8.0
+    signal_accuracy = round(base_acc + spread_bonus + price_bonus, 1)
+    status_label = "💎 ВИСОКА ТОЧНОСТ" if signal_accuracy >= 85 else "✅ СТАБИЛЕН СИГНАЛ"
+elif ema8_p < ema14_p < ema21_p:
+    base_acc = 72.0
+    spread_bonus = min(16.0, (ema_spread_pct / volatility_threshold) * 4)
+    price_bonus = 10.0 if current_p <= ema8_p else -8.0
+    signal_accuracy = round(base_acc + spread_bonus + price_bonus, 1)
+    status_label = "💎 ВИСОКА ТОЧНОСТ" if signal_accuracy >= 85 else "✅ СТАБИЛЕН СИГНАЛ"
+else:
+    signal_accuracy = random.randint(38, 49)
+    status_label = "⚠️ СРЕДНА/ФЛАТ"
 
-    # Определяне на сигналите и достоверността
-    if is_low_volatility:
-        buy_ratio = random.randint(49, 51)
+signal_accuracy = max(0.0, min(99.0, signal_accuracy))
+
+# 7. ГОРЕН ПАНЕЛ: ЧАСОВНИК, ТАЙМЕР И ЦЕНА
+t_col1, t_col2, t_col3 = st.columns(3)
+t_col1.metric("🕒 Време на затваряне", current_time_str)
+t_col2.metric(f"⏳ Опресняване след ({timeframe_label})", f"{remaining_seconds} сек.")
+
+if current_p < 0.01: fmt_str = "{:.6f}"
+elif current_p < 1000: fmt_str = "{:.4f}"
+else: fmt_str = "{:.2f}"
+
+t_col3.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
+
+st.write("---")
+
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
+if is_low_volatility:
+    buy_ratio = random.randint(48, 52)
+    sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
+    signal_func = st.warning
+    status_text = f"⚠️ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са слепени под прага от {volatility_threshold}%. Изчакайте!"
+
+elif ema8_p > ema14_p > ema21_p:
+    if current_p >= ema8_p:
+        buy_ratio = random.randint(85, 96)
         sell_ratio = 100 - buy_ratio
-        arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
+        arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>STRONG BUY</div>"
+        signal_func = st.success
+        status_text = f"🔥 СИЛЕН ИМПУЛС: Линиите потвърждават възходящ тренд на {timeframe_label}."
+    else:
+        buy_ratio = random.randint(60, 70)
+        sell_ratio = 100 - buy_ratio
+        arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
         signal_func = st.warning
-        status_text = f"⚠️ НИСКА ВОЛАТИЛНОСТ: Линиите са слепени под прага от {volatility_threshold}%."
-        signal_accuracy = random.randint(8, 18)
-        status_label = "🚫 КРИТИЧНО НИСКА"
-    elif ema8_p > ema14_p > ema21_p:
-        base_acc = 72.0
-        spread_bonus = min(16.0, (ema_spread_pct / volatility_threshold) * 4)
-        price_bonus = 10.0 if current_p >= ema8_p else -8.0
-        signal_accuracy = round(base_acc + spread_bonus + price_bonus, 1)
-        status_label = "💎 ВИСОКА ТОЧНОСТ" if signal_accuracy >= 85 else "✅ СТАБИЛЕН СИГНАЛ"
-        
-        if current_p >= ema8_p:
-            buy_ratio = random.randint(85, 96)
-            sell_ratio = 100 - buy_ratio
-            arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>STRONG BUY</div>"
-            signal_func = st.success
-            status_text = f"🔥 СИЛЕН ИМПУЛС: Потвърден възходящ тренд на {timeframe_label}."
-        else:
-            buy_ratio = random.randint(60, 70)
-            sell_ratio = 100 - buy_ratio
-            arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
-            signal_func = st.warning
-            status_text = f"⏳ КОРЕКЦИЯ: Цена под ЕМА {p_fast}."
-    elif ema8_p < ema14_p < ema21_p:
-        base_acc = 72.0
-        spread_bonus = min(16.0, (ema_spread_pct / volatility_threshold) * 4)
-        price_bonus = 10.0 if current_p <= ema8_p else -8.0
-        signal_accuracy = round(base_acc + spread_bonus + price_bonus, 1)
+        status_text = f"⏳ КОРЕКЦИЯ: Цена под ЕМА {p_fast} за {timeframe_label}."
+
+elif ema8_p < ema14_p < ema21_p:
