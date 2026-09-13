@@ -69,7 +69,7 @@ def generate_fresh_history(asset_name, tf_seconds):
         times.append(current_time + timedelta(seconds=i * tf_seconds))
     return pd.DataFrame({"Timestamp": times, "Price": prices})
 
-# 4. Box настройки в сайдбара
+# 4. Контролен панел в сайдбара
 st.sidebar.subheader("⚙️ Настройки на Бота")
 selected_asset = st.sidebar.selectbox("Актив:", all_otc_assets, index=0)
 timeframe_label = st.sidebar.selectbox("Таймфрейм:", options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"], index=3)
@@ -84,7 +84,7 @@ else:
     p_fast, p_mid, p_slow = 8, 14, 21
     volatility_threshold = 0.012
 
-# 5. Синхронизация на данните
+# 5. База данни и синхронизация
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
     st.session_state.current_asset = selected_asset
     st.session_state.current_tf = tf_seconds
@@ -104,7 +104,7 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
 if "current_p" not in st.session_state:
     st.session_state.force_calculation = True
 
-# 6. Технически анализ
+# 6. Математически технически анализ
 if st.session_state.get("force_calculation", True):
     df_calc = st.session_state.df_history.copy()
     df_calc['EMA_Fast'] = df_calc['Price'].ewm(span=p_fast, adjust=False).mean()
@@ -195,13 +195,13 @@ with col_ratio:
 with col_trend:
     st.markdown("**🎯 Направление на пазара:**")
     
-    # Добавено свойство letter-spacing: 2px; във всеки HTML контейнер за по-добра четимост
+    # Размерът на шрифта е намален с още 20% (до 3.6vw) за по-дискретен изглед
     if is_low_volatility:
-        st.html("<div style='font-size: 3.6vw; font-weight: bold; color: #FFB300; line-height: 1.1; white-space: nowrap; letter-spacing: 2px;'>⚠ ➡ LOW VOL</div>")
+        st.html("<div style='font-size: 3.6vw; font-weight: bold; color: #FFB300; line-height: 1.1; white-space: nowrap;'>⚠ ➡ LOW VOL</div>")
         st.write("⚠️ **НИСКА ВОЛАТИЛНОСТ:** Странично движение (Рейндж). Липсва мощност.")
         
     elif is_intertwined:
-        st.html("<div style='font-size: 3.6vw; font-weight: bold; color: #9E9E9E; line-height: 1.1; white-space: nowrap; letter-spacing: 2px;'>➡ ✕ FALSE</div>")
+        st.html("<div style='font-size: 3.6vw; font-weight: bold; color: #9E9E9E; line-height: 1.1; white-space: nowrap;'>➡ ✕ FALSE</div>")
         st.write("🔄 **ФАЛШИВ ПРОБИВ:** Линиите се преплитат. Пазарът е нестабилен.")
         
     elif emaFast_p > emaMid_p > emaSlow_p:
