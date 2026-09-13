@@ -1,5 +1,6 @@
 
 
+
 import streamlit as st
 import time
 import random
@@ -161,47 +162,50 @@ with col_price:
 
 st.write("---")
 
-# РЕД 2: Големи Стрелки за посоката и Пазарно съотношение
-col_trend, col_ratio = st.columns(2)
-
-with col_trend:
-    st.markdown("**🎯 Направление на пазара:**")
-    
-    if is_low_volatility:
-        buy_ratio = random.randint(49, 51)
-        st.header("🟡 ➡ ↔ ➡")
-        st.write("⚠️ **НИСКА ВОЛАТИЛНОСТ:** Странично движение (Рейндж). Липсва мощност.")
-        
-    elif is_intertwined:
-        buy_ratio = random.randint(46, 54)
-        st.header("🟠 ➡ ❌ ➡")
-        st.write("🔄 **ФАЛШИВ ПРОБИВ:** Линиите се преплитат. Пазарът е нестабилен.")
-        
-    elif emaFast_p > emaMid_p > emaSlow_p:
-        if current_p >= emaFast_p and is_strong_momentum and fast_ema_slope > 0:
-            buy_ratio = random.randint(88, 98)
-            st.header("🟢 ⬆ ⬆ ⬆ 🔥")
-            st.write("🚀 **STRONG BUY:** Изразен бичи тренд. Цената расте ускорено.")
-        else:
-            buy_ratio = random.randint(58, 68)
-            st.header("🟢 ⬆ 📈 ⬆")
-            st.write("⏳ **WEAK BUY:** Корекция във възходящия тренд. Инерцията отслабва.")
-            
-    elif emaFast_p < emaMid_p < emaSlow_p:
-        if current_p <= emaFast_p and is_strong_momentum and fast_ema_slope < 0:
-            buy_ratio = 100 - random.randint(88, 98)
-            st.header("🔴 ⬇ ⬇ ⬇ 🚨")
-            st.write("下降 **STRONG SELL:** Изразен мечи спад. Цената пада интензивно.")
-        else:
-            buy_ratio = 100 - random.randint(60, 70)
-            st.header("🔴 ⬇ 📉 ⬇")
-            st.write("⏳ **WEAK SELL:** Лека корекция. Липсва агресивен натиск надолу.")
+# Динамично изчисляване на съотношението спрямо състоянието
+if is_low_volatility:
+    buy_ratio = random.randint(49, 51)
+elif is_intertwined:
+    buy_ratio = random.randint(46, 54)
+elif emaFast_p > emaMid_p > emaSlow_p:
+    if current_p >= emaFast_p and is_strong_momentum and fast_ema_slope > 0:
+        buy_ratio = random.randint(88, 98)
     else:
-        buy_ratio = random.randint(47, 53)
-        st.header("⚪ ➖ ➖ ➖")
-        st.write("⚪ **КОНСОЛИДАЦИЯ:** Няма ясен сигнал от индикаторите в момента.")
+        buy_ratio = random.randint(58, 68)
+elif emaFast_p < emaMid_p < emaSlow_p:
+    if current_p <= emaFast_p and is_strong_momentum and fast_ema_slope < 0:
+        buy_ratio = 100 - random.randint(88, 98)
+    else:
+        buy_ratio = 100 - random.randint(60, 70)
+else:
+    buy_ratio = random.randint(47, 53)
+
+
+# РЕД 2: Разменени колони (Пазарни Сили вляво, Направление вдясно)
+col_ratio, col_trend = st.columns(2)
 
 with col_ratio:
     st.markdown(f"**📊 Пазарни Сили ({timeframe_label}):**")
     st.text(f"🐂 Купувачи (Bulls): {buy_ratio}%")
     st.text(f"🐻 Продавачи (Bears): {100 - buy_ratio}%")
+
+with col_trend:
+    st.markdown("**🎯 Направление на пазара:**")
+    
+    if is_low_volatility:
+        st.html("<div style='font-size: 70px; font-weight: bold; color: #FFB300; line-height: 1.1;'>➔</div>")
+        st.write("⚠️ **НИСКА ВОЛАТИЛНОСТ:** Странично движение (Рейндж). Липсва мощност.")
+        
+    elif is_intertwined:
+        st.html("<div style='font-size: 70px; font-weight: bold; color: #9E9E9E; line-height: 1.1;'>➔ ✕</div>")
+        st.write("🔄 **ФАЛШИВ ПРОБИВ:** Линиите се преплитат. Пазарът е нестабилен.")
+        
+    elif emaFast_p > emaMid_p > emaSlow_p:
+        if current_p >= emaFast_p and is_strong_momentum and fast_ema_slope > 0:
+            st.html("<div style='font-size: 70px; font-weight: bold; color: #00E676; line-height: 1.1;'>🛆</div>")
+            st.write("🚀 **STRONG BUY:** Изразен бичи тренд. Цената расте ускорено.")
+        else:
+            st.html("<div style='font-size: 70px; font-weight: bold; color: #AEEA00; line-height: 1.1;'>🛆</div>")
+            st.write("⏳ **WEAK BUY:** Корекция във възходящия тренд. Инерцията отслабва.")
+            
+    elif emaFast_p < emaMid_p < emaSlow_p:
