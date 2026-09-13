@@ -192,19 +192,18 @@ with col_ratio:
 with col_trend:
     st.markdown("**🎯 Направление на пазара:**")
     
-    # 84px представлява увеличение с точно 20% спрямо първоначалните 70px
+    # Големи съвпадащи текстове и стрелки (84px размер с HEX цветове)
     if is_low_volatility:
-        st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ➡</div>")
+        st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ➡ LOW VOL</div>")
         st.write("⚠️ **НИСКА ВОЛАТИЛНОСТ:** Странично движение (Рейндж). Липсва мощност.")
         
     elif is_intertwined:
-        st.html("<div style='font-size: 84px; font-weight: bold; color: #9E9E9E; line-height: 1.1;'>➡ ✕</div>")
+        st.html("<div style='font-size: 84px; font-weight: bold; color: #9E9E9E; line-height: 1.1;'>➡ ✕ FALSE</div>")
         st.write("🔄 **ФАЛШИВ ПРОБИВ:** Линиите се преплитат. Пазарът е нестабилен.")
         
     elif emaFast_p > emaMid_p > emaSlow_p:
         if current_p >= emaFast_p and is_strong_momentum and fast_ema_slope > 0:
-            st.html("<div style='font-size: 84px; font-weight: bold; color: #00E676; line-height: 1.1;'>⬆ 🔥</div>")
+            st.html("<div style='font-size: 84px; font-weight: bold; color: #00E676; line-height: 1.1;'>⬆ 🔥 STRONG BUY</div>")
             st.write("🚀 **STRONG BUY:** Изразен бичи тренд. Цената расте ускорено.")
         else:
-            st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ⬆</div>")
-            st.write("⏳ **WEAK BUY:** Корекция във възходящия тренд. Инерцията отслабва.")
+            st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ⬆ WEAK BUY</div>")
