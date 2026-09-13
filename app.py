@@ -50,7 +50,13 @@ all_otc_assets = [
     "USD/ARS (OTC)", "AED/CNY (OTC)", "NGN/USD (OTC)", "KES/USD (OTC)", 
     "UAH/USD (OTC)", "GOLD (OTC)", "SILVER (OTC)", "APPLE (OTC)", "GOOGLE (OTC)", 
     "MICROSOFT (OTC)", "AMAZON (OTC)", "TESLA (OTC)", "META (OTC)", 
-    "NVIDIA (OTC)", "NETFLIX (OTC)"
+    "NVIDIA (OTC)", "NETFLIX (OTC)",
+    # --- НОВИ 20 ВАЛУТНИ АКТИВА ---
+    "EUR/AUD (OTC)", "GBP/CHF (OTC)", "AUD/NZD (OTC)", "CAD/CHF (OTC)",
+    "EUR/CAD (OTC)", "GBP/CAD (OTC)", "NZD/USD (OTC)", "USD/SGD (OTC)",
+    "USD/HKD (OTC)", "EUR/NZD (OTC)", "GBP/NZD (OTC)", "CHF/JPY (OTC)",
+    "AUD/JPY (OTC)", "CAD/JPY (OTC)", "NZD/JPY (OTC)", "EUR/CHF (OTC)",
+    "USD/MXN (OTC)", "GBP/AUD (OTC)", "AUD/CAD (OTC)", "USD/NOK (OTC)"
 ]
 
 # 4. Funktion за генериране на базова история
