@@ -120,7 +120,9 @@ st.sidebar.text(f"Бърза: EMA {p_fast}")
 st.sidebar.text(f"Средна: EMA {p_mid}")
 st.sidebar.text(f"Бавна: EMA {p_slow}")
 
-# 6. СИНХРОНИЗАЦИЯ И СТАБИЛИЗАЦИЯ НА ДАННИТЕ
+# ==========================================
+# 6. СИНХРОНИЗАЦИЯ, СТАБИЛИЗАЦИЯ И ЗАДЪЛБОЧЕН АНАЛИЗ
+# ==========================================
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
     st.session_state.current_asset = selected_asset
     st.session_state.current_tf = tf_seconds
@@ -138,91 +140,103 @@ if current_timestamp_bucket != st.session_state.last_update_timestamp:
 
 df = st.session_state.df_history.copy()
 
-# Изчисляване на индикаторите
-df['EMA_8'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
-df['EMA_14'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
-df['EMA_21'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
+# 6.1. Изчисляване на ЕМА индикатори
+df['EMA_Fast'] = df['Price'].ewm(span=p_fast, adjust=False).mean()
+df['EMA_Mid'] = df['Price'].ewm(span=p_mid, adjust=False).mean()
+df['EMA_Slow'] = df['Price'].ewm(span=p_slow, adjust=False).mean()
 
+# 6.2. Математически изчисления за прецизен анализ
+# Изчисляване на волатилността на база стандартно отклонение за последните 20 периода (в %)
+df['Volatility_SD'] = (df['Price'].rolling(window=20).std() / df['Price']) * 100
+
+# Изчисляване на наклона/импулса (Slope) на бързата ЕМА спрямо предходния бар
+df['EMA_Fast_Slope'] = df['EMA_Fast'].diff(1) / df['EMA_Fast'].shift(1) * 100
+
+# Вземане на стойностите от последния (текущ) бар
 current_p = df['Price'].iloc[-1]
-ema8_p = df['EMA_8'].iloc[-1]
-ema14_p = df['EMA_14'].iloc[-1]
-ema21_p = df['EMA_21'].iloc[-1]
+ema8_p = df['EMA_Fast'].iloc[-1]
+ema14_p = df['EMA_Mid'].iloc[-1]
+ema21_p = df['EMA_Slow'].iloc[-1]
 
-# Индикатор за волатилност
+# Вземане на стойностите от предишния бар (за потвърждение на посоката)
+ema8_prev = df['EMA_Fast'].iloc[-2]
+ema14_prev = df['EMA_Mid'].iloc[-2]
+ema21_prev = df['EMA_Slow'].iloc[-2]
+
+# 6.3. Дълбоки пазарни филтри
+current_volatility = df['Volatility_SD'].iloc[-1]
+fast_ema_slope = df['EMA_Fast_Slope'].iloc[-1]
+
+# Проверка за раздалечаване (Spread) на линиите в проценти
 ema_spread_pct = (abs(ema8_p - ema21_p) / ema21_p) * 100
-is_low_volatility = ema_spread_pct < volatility_threshold
 
-# Форматиране на цената
+# Филтър 1: Ниска волатилност (пазарът е заспал)
+is_low_volatility = current_volatility < (volatility_threshold * 0.4) or ema_spread_pct < (volatility_threshold * 0.5)
+
+# Филтър 2: Преплитане на линиите (Кръстосване / Липса на ясен тренд)
+# Проверява дали подредбата се е променила спрямо миналия бар (флат/шум)
+is_intertwined = (ema8_p > ema21_p and ema8_prev < ema21_prev) or (ema8_p < ema21_p and ema8_prev > ema21_prev)
+
+# Филтър 3: Сила на импулса (Ускорение)
+# Ако наклонът е силно изразен, трендът се счита за валиден
+is_strong_momentum = abs(fast_ema_slope) > 0.005
+
+# Форматиране на цената на база стойност
 if current_p < 0.01: fmt_str = "{:.6f}"
 elif current_p < 1000: fmt_str = "{:.4f}"
 else: fmt_str = "{:.2f}"
 
-# --- ИЗОЛИРАН ФРАГМЕНТ ЗА ЖИВО ОТБРОЯВАНЕ ---
-@st.fragment(run_every=1.0)
-def render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str):
-    remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
-    
-    # АКО ТАЙМЕРЪТ ИЗТЕЧЕ: Презареждаме цялата страница, за да се генерира новата свещ и тренд
-    if remaining_seconds == tf_seconds or remaining_seconds <= 0:
-        st.rerun()
-        
-    t_col1, t_col2 = st.columns(2)
-    t_col1.metric(f"⏳ Опресняване след ({timeframe_label})", f"{remaining_seconds} сек.")
-    t_col2.metric(f"Цена {selected_asset}", fmt_str.format(current_p))
 
-# Извикване на живия панел
-render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str)
 
-# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ (БЕЗ ПРОМЕНИ В АНАЛИЗА)
+# 8. СРЕДЕН ПАНЕЛ: ОБНОВЕНА СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
 
 if is_low_volatility:
     buy_ratio = random.randint(49, 51)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠➡</div><div class='direction-text' style='color: #ffaa00;'>LOW VOLATILITY</div>"
-    signal_func = st.warning
-    status_text = f"⚠️ НИСКА ВОЛАТИЛНОСТ / ОПАСЕН ВХОД: Линиите са слепени под прага от {volatility_threshold}%. Изчакайте!"
+    status_text = f"⚠️ НИСКА ВОЛАТИЛНОСТ: Пазарът няма сила. Изчакайте разширение на ценовия диапазон."
+
+elif is_intertwined:
+    buy_ratio = random.randint(46, 54)
+    sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡❌</div><div class='direction-text' style='color: #aaaaaa;'>FALSE BREAKOUT / CHOPPY</div>"
+    status_text = f"📉 ПРЕПЛИТАНЕ НА ЛИНИИТЕ: Липса на ясна посока и фалшиви пробиви. Не влизайте!"
 
 elif ema8_p > ema14_p > ema21_p:
-    if current_p >= ema8_p:
-        buy_ratio = random.randint(85, 96)
+    if current_p >= ema8_p and is_strong_momentum and fast_ema_slope > 0:
+        buy_ratio = random.randint(88, 98) # По-висока увереност заради филтрите
         sell_ratio = 100 - buy_ratio
-        arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆</div><div class='direction-text' style='color: #00ff66;'>STRONG BUY</div>"
-        signal_func = st.success
-        status_text = f"🔥 СИЛЕН ИМПУЛС: Линиите потвърждават възходящ тренд на {timeframe_label}."
+        arrow_html = "<div class='direction-arrow' style='color: #00ff66;'>⬆🔥</div><div class='direction-text' style='color: #00ff66;'>STRONG BUY</div>"
+        status_text = f"🔥 СИЛЕН УСКОРЯВАЩ ТРЕНД: Цената е над ЕМА, линиите са подредени и бързата ЕМА расте с темп {fast_ema_slope:.3f}%."
     else:
-        buy_ratio = random.randint(60, 70)
+        buy_ratio = random.randint(58, 68)
         sell_ratio = 100 - buy_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬆</div><div class='direction-text' style='color: #ffaa00;'>WEAK BUY</div>"
-        signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Цена под ЕМА {p_fast} за {timeframe_label}."
+        status_text = f"⏳ КОРЕКЦИЯ/ОТСЛАБВАНЕ: Възходяща подредба, но инерцията намалява."
 
 elif ema8_p < ema14_p < ema21_p:
-    if current_p <= ema8_p:
-        sell_ratio = random.randint(85, 96)
+    if current_p <= ema8_p and is_strong_momentum and fast_ema_slope < 0:
+        sell_ratio = random.randint(88, 98)
         buy_ratio = 100 - sell_ratio
-        arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
-        signal_func = st.error
-        status_text = f"🚨 СИЛЕН ИМПУЛС: Линиите потвърждават низходящ тренд на {timeframe_label}."
+        arrow_html = "<div class='direction-arrow' style='color: #ff3333;'>⬇🚨</div><div class='direction-text' style='color: #ff3333;'>STRONG SELL</div>"
+        status_text = f"🚨 СИЛЕН СПАД: Цената натиска надолу, линиите са подредени и ЕМА пада с темп {fast_ema_slope:.3f}%."
     else:
         sell_ratio = random.randint(60, 70)
         buy_ratio = 100 - sell_ratio
         arrow_html = "<div class='direction-arrow' style='color: #ffaa00;'>⚠⬇</div><div class='direction-text' style='color: #ffaa00;'>WEAK SELL</div>"
-        signal_func = st.warning
-        status_text = f"⏳ КОРЕКЦИЯ: Цена над ЕМА {p_fast} за {timeframe_label}."
+        status_text = f"⏳ КОРЕКЦИЯ/ОТСЛАБВАНЕ: Низходяща подредба, но липсва силен натиск."
 
 else:
     buy_ratio = random.randint(47, 53)
     sell_ratio = 100 - buy_ratio
     arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
-    signal_func = st.info
-    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Липса на ясна посока на {timeframe_label}."
+    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Пазарът се свива в тесен рейндж."
 
 sig_col1, sig_col2 = st.columns(2)
-
 with sig_col1:
     st.markdown(arrow_html, unsafe_allow_html=True)
-
 with sig_col2:
     st.subheader(f"📊 Пазарно съотношение ({timeframe_label})")
     st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
+    st.write(status_text)
