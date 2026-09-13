@@ -28,7 +28,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. --- СПИСЪК С OTC АКТИВА НА POCKET OPTION (Разширен с 20 нови актива) ---
+# 3. --- СПИСЪК С OTC АКТИВА НА POCKET OPTION ---
 all_otc_assets = [
     "BHD/CNY (OTC)", "CHF/NOK (OTC)", "EUR/TRY (OTC)", "LBP/USD (OTC)", 
     "MAD/USD (OTC)", "OMR/CNY (OTC)", "USD/ARC (OTC)", "USD/COP (OTC)", 
@@ -47,7 +47,7 @@ all_otc_assets = [
     "USD/SGD (OTC)", "USD/RUB (OTC)", "EUR/RUB (OTC)", "USD/PLN (OTC)", 
     "USD/NOK (OTC)", "USD/SEK (OTC)", "USD/MXN (OTC)", "USD/INR (OTC)",
     "USD/HKD (OTC)", "USD/DKK (OTC)", "USD/CNH (OTC)", "USD/BRL (OTC)",
-    "USD/ARS (OTC)", "AED/CNY (OTC)", NGN/USD (OTC)", "KES/USD (OTC)", 
+    "USD/ARS (OTC)", "AED/CNY (OTC)", "NGN/USD (OTC)", "KES/USD (OTC)", 
     "UAH/USD (OTC)", "GOLD (OTC)", "SILVER (OTC)", "APPLE (OTC)", "GOOGLE (OTC)", 
     "MICROSOFT (OTC)", "AMAZON (OTC)", "TESLA (OTC)", "META (OTC)", 
     "NVIDIA (OTC)", "NETFLIX (OTC)",
@@ -58,6 +58,7 @@ all_otc_assets = [
     "AUD/JPY (OTC)", "CAD/JPY (OTC)", "NZD/JPY (OTC)", "EUR/CHF (OTC)",
     "USD/MXN (OTC)", "GBP/AUD (OTC)", "AUD/CAD (OTC)", "USD/NOK (OTC)"
 ]
+
 
 # 4. Funktion за генериране на базова история
 def generate_fresh_history(asset_name, tf_seconds):
