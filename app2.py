@@ -149,7 +149,6 @@ def render_live_timer(tf_seconds):
 # ГЛАВЕН ЕКРАН - УЛТРАКОМПАКТЕН ИЗГЛЕД НА ЕДИН ЕКРАН
 # =========================================================
 
-# Празен ред за смъкване на страницата с един ред надолу
 st.write("")
 
 st.subheader(f"🤖 PO 3 EMA Pro Dashboard | {selected_asset}", divider="blue")
@@ -193,19 +192,19 @@ with col_ratio:
 with col_trend:
     st.markdown("**🎯 Направление на пазара:**")
     
+    # 84px представлява увеличение с точно 20% спрямо първоначалните 70px
     if is_low_volatility:
-        st.html("<div style='font-size: 70px; font-weight: bold; color: #FFB300; line-height: 1.1;'>➔</div>")
+        st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ➡</div>")
         st.write("⚠️ **НИСКА ВОЛАТИЛНОСТ:** Странично движение (Рейндж). Липсва мощност.")
         
     elif is_intertwined:
-        st.html("<div style='font-size: 70px; font-weight: bold; color: #9E9E9E; line-height: 1.1;'>➔ ✕</div>")
+        st.html("<div style='font-size: 84px; font-weight: bold; color: #9E9E9E; line-height: 1.1;'>➡ ✕</div>")
         st.write("🔄 **ФАЛШИВ ПРОБИВ:** Линиите се преплитат. Пазарът е нестабилен.")
         
     elif emaFast_p > emaMid_p > emaSlow_p:
         if current_p >= emaFast_p and is_strong_momentum and fast_ema_slope > 0:
-            st.html("<div style='font-size: 70px; font-weight: bold; color: #00E676; line-height: 1.1;'>🛆</div>")
+            st.html("<div style='font-size: 84px; font-weight: bold; color: #00E676; line-height: 1.1;'>⬆ 🔥</div>")
             st.write("🚀 **STRONG BUY:** Изразен бичи тренд. Цената расте ускорено.")
         else:
-            st.html("<div style='font-size: 70px; font-weight: bold; color: #AEEA00; line-height: 1.1;'>🛆</div>")
+            st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ⬆</div>")
             st.write("⏳ **WEAK BUY:** Корекция във възходящия тренд. Инерцията отслабва.")
-            
