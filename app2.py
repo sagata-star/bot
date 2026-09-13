@@ -71,7 +71,7 @@ st.sidebar.subheader("⚙️ Настройки на Бота")
 selected_asset = st.sidebar.selectbox("Актив:", all_otc_assets, index=0)
 timeframe_label = st.sidebar.selectbox("Таймфрейм:", options=["5 сек", "15 сек", "30 сек", "1 мин", "3 мин", "5 мин", "10 мин"], index=3)
 
-tf_mapping = {"5 сек": 5, "15 сек": 15, "30 сек": 30, "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600}
+tf_mapping = {"5 сек": 5, "15 сек": 15, "30 сек": 30, "1 мин": 60, "3 мин": 180, "5 min": 300, "10 мин": 600}
 tf_seconds = tf_mapping[timeframe_label]
 
 if tf_seconds < 60:
