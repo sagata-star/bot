@@ -209,3 +209,11 @@ with col_trend:
             st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ⬆</div>")
             st.write("⏳ **WEAK BUY:** Корекция във възходящия тренд. Инерцията отслабва.")
 
+    elif emaFast_p < emaMid_p < emaSlow_p:
+        if current_p <= emaFast_p and is_strong_momentum and fast_ema_slope < 0:
+            st.html("<div style='font-size: 84px; font-weight: bold; color: #FF1744; line-height: 1.1;'>⬇ 🔥</div>")
+            st.write("💥 **STRONG SELL:** Изразен мечи тренд. Цената пада ускорено.")
+        else:
+            st.html("<div style='font-size: 84px; font-weight: bold; color: #FFB300; line-height: 1.1;'>⚠ ⬇</div>")
+            st.write("⏳ **WEAK SELL:** Корекция в низходящия тренд. Инерцията отслабва.")
+
