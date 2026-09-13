@@ -50,15 +50,8 @@ all_otc_assets = [
     "USD/ARS (OTC)", "AED/CNY (OTC)", "NGN/USD (OTC)", "KES/USD (OTC)", 
     "UAH/USD (OTC)", "GOLD (OTC)", "SILVER (OTC)", "APPLE (OTC)", "GOOGLE (OTC)", 
     "MICROSOFT (OTC)", "AMAZON (OTC)", "TESLA (OTC)", "META (OTC)", 
-    "NVIDIA (OTC)", "NETFLIX (OTC)",
-    # --- НОВИ 20 ВАЛУТНИ АКТИВА ---
-    "EUR/AUD (OTC)", "GBP/CHF (OTC)", "AUD/NZD (OTC)", "CAD/CHF (OTC)",
-    "EUR/CAD (OTC)", "GBP/CAD (OTC)", "NZD/USD (OTC)", "USD/SGD (OTC)",
-    "USD/HKD (OTC)", "EUR/NZD (OTC)", "GBP/NZD (OTC)", "CHF/JPY (OTC)",
-    "AUD/JPY (OTC)", "CAD/JPY (OTC)", "NZD/JPY (OTC)", "EUR/CHF (OTC)",
-    "USD/MXN (OTC)", "GBP/AUD (OTC)", "AUD/CAD (OTC)", "USD/NOK (OTC)"
+    "NVIDIA (OTC)", "NETFLIX (OTC)"
 ]
-
 
 # 4. Funktion за генериране на базова история
 def generate_fresh_history(asset_name, tf_seconds):
@@ -215,3 +208,15 @@ elif ema8_p < ema14_p < ema21_p:
 else:
     buy_ratio = random.randint(47, 53)
     sell_ratio = 100 - buy_ratio
+    arrow_html = "<div class='direction-arrow' style='color: #aaaaaa;'>➡</div><div class='direction-text' style='color: #aaaaaa;'>NO SIGNAL</div>"
+    signal_func = st.info
+    status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Липса на ясна посока на {timeframe_label}."
+
+sig_col1, sig_col2 = st.columns(2)
+
+with sig_col1:
+    st.markdown(arrow_html, unsafe_allow_html=True)
+
+with sig_col2:
+    st.subheader(f"📊 Пазарно съотношение ({timeframe_label})")
+    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
