@@ -28,7 +28,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. --- СПИСЪК С OTC АКТИВА НА POCKET OPTION ---
+# 3. --- СПИСЪК С OTC АКТИВА НА POCKET OPTION (ДОБАВЕНИ 20 НОВИ АКТИВА) ---
 all_otc_assets = [
     "BHD/CNY (OTC)", "CHF/NOK (OTC)", "EUR/TRY (OTC)", "LBP/USD (OTC)", 
     "MAD/USD (OTC)", "OMR/CNY (OTC)", "USD/ARC (OTC)", "USD/COP (OTC)", 
@@ -50,7 +50,13 @@ all_otc_assets = [
     "USD/ARS (OTC)", "AED/CNY (OTC)", "NGN/USD (OTC)", "KES/USD (OTC)", 
     "UAH/USD (OTC)", "GOLD (OTC)", "SILVER (OTC)", "APPLE (OTC)", "GOOGLE (OTC)", 
     "MICROSOFT (OTC)", "AMAZON (OTC)", "TESLA (OTC)", "META (OTC)", 
-    "NVIDIA (OTC)", "NETFLIX (OTC)"
+    "NVIDIA (OTC)", "NETFLIX (OTC)",
+    # --- СЛЕДВАЩИТЕ 20 АКТИВА СА НОВОДОБАВЕНИ ---
+    "EUR/ILS (OTC)", "GBP/ILS (OTC)", "USD/ILS (OTC)", "EUR/HUF (OTC)",
+    "USD/HUF (OTC)", "EUR/CZK (OTC)", "USD/CZK (OTC)", "EUR/PLN (OTC)",
+    "AUD/SGD (OTC)", "CAD/SGD (OTC)", "CHF/SGD (OTC)", "GBP/SGD (OTC)",
+    "EUR/SGD (OTC)", "JPY/SGD (OTC)", "GBP/ZAR (OTC)", "AUD/TRY (OTC)",
+    "CAD/TRY (OTC)", "GBP/TRY (OTC)", "NZD/TRY (OTC)", "PLATINUM (OTC)"
 ]
 
 # 4. Funktion за генериране на базова история
@@ -94,10 +100,8 @@ timeframe_label = st.sidebar.selectbox(
 
 tf_mapping = {
     "5 сек": 5, "15 сек": 15, "30 сек": 30,
-    "1 мин": 60, "3 mint": 180, "5 мин": 300, "10 мин": 600
+    "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600
 }
-# Поправка на малка правописна грешка в оригиналния речник за "3 мин"
-tf_mapping["3 мин"] = 180 
 tf_seconds = tf_mapping[timeframe_label]
 
 # Адаптивни ЕМА периоди и прагове за волатилност
@@ -156,7 +160,6 @@ else: fmt_str = "{:.2f}"
 def render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str):
     remaining_seconds = tf_seconds - (int(time.time()) % tf_seconds)
     
-    # АКО ТАЙМЕРЪТ ИЗТЕЧЕ: Презареждаме цялата страница, за да се генерира новата свещ и тренд
     if remaining_seconds == tf_seconds or remaining_seconds <= 0:
         st.rerun()
         
@@ -167,7 +170,7 @@ def render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fm
 # Извикване на живия панел
 render_live_panel(timeframe_label, tf_seconds, selected_asset, current_p, fmt_str)
 
-# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ (БЕЗ ПРОМЕНИ В АНАЛИЗА)
+# 8. СРЕДЕН ПАНЕЛ: СТРОГА ЛОГИКА ЗА СИГНАЛИ
 st.write("---")
 
 if is_low_volatility:
@@ -212,11 +215,3 @@ else:
     signal_func = st.info
     status_text = f"📉 КОНСОЛИДАЦИЯ (ФЛАТ): Липса на ясна посока на {timeframe_label}."
 
-sig_col1, sig_col2 = st.columns(2)
-
-with sig_col1:
-    st.markdown(arrow_html, unsafe_allow_html=True)
-
-with sig_col2:
-    st.subheader(f"📊 Пазарно съотношение ({timeframe_label})")
-    st.markdown(f"**Купувачи (Bulls):** {buy_ratio}%")
