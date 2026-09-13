@@ -1,6 +1,3 @@
-
-
-
 import streamlit as st
 import time
 import random
@@ -151,6 +148,10 @@ def render_live_timer(tf_seconds):
 # =========================================================
 # ГЛАВЕН ЕКРАН - УЛТРАКОМПАКТЕН ИЗГЛЕД НА ЕДИН ЕКРАН
 # =========================================================
+
+# Празен ред за смъкване на страницата с един ред надолу
+st.write("")
+
 st.subheader(f"🤖 PO 3 EMA Pro Dashboard | {selected_asset}", divider="blue")
 
 # РЕД 1: Таймер и Цена
@@ -208,4 +209,3 @@ with col_trend:
             st.html("<div style='font-size: 70px; font-weight: bold; color: #AEEA00; line-height: 1.1;'>🛆</div>")
             st.write("⏳ **WEAK BUY:** Корекция във възходящия тренд. Инерцията отслабва.")
             
-    elif emaFast_p < emaMid_p < emaSlow_p:
