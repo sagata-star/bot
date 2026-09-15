@@ -74,12 +74,14 @@ timeframe_label = st.sidebar.selectbox("Таймфрейм:", options=["5 сек
 tf_mapping = {"5 сек": 5, "15 сек": 15, "30 сек": 30, "1 мин": 60, "3 мин": 180, "5 мин": 300, "10 мин": 600}
 tf_seconds = tf_mapping[timeframe_label]
 
+# ПРОМЯНА: Ако таймфреймът е под 60 секунди (секунден таймфрейм)
 if tf_seconds < 60:
-    p_fast, p_mid, p_slow = 12, 24, 50
+    p_fast, p_mid, p_slow = 12, 24, 50   # За секундите: Бърза 12, Средна 24, Бавна 50
     volatility_threshold = 0.025
 else:
-    p_fast, p_mid, p_slow = 8, 14, 21
+    p_fast, p_mid, p_slow = 8, 14, 21    # За минутите: Бърза 8, Средна 14, Бавна 21
     volatility_threshold = 0.012
+
 
 # 5. База данни и синхронизация
 if "current_asset" not in st.session_state or st.session_state.current_asset != selected_asset or "current_tf" not in st.session_state or st.session_state.current_tf != tf_seconds:
