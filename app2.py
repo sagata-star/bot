@@ -107,7 +107,9 @@ if st.session_state.get("force_calculation", True):
     df_calc['EMA_Fast'] = df_calc['Price'].ewm(span=p_fast, adjust=False).mean()
     df_calc['EMA_Mid'] = df_calc['Price'].ewm(span=p_mid, adjust=False).mean()
     df_calc['EMA_Slow'] = df_calc['Price'].ewm(span=p_slow, adjust=False).mean()
-    window_size = min(20, len(df_calc))
+    
+    # ПРОМЯНА: Разширяване на диапазона за анализ на волатилността до 200 свещи
+    window_size = min(200, len(df_calc))
     df_calc['Volatility_SD'] = (df_calc['Price'].rolling(window=window_size).std() / df_calc['Price']) * 100
     df_calc['EMA_Fast_Slope'] = df_calc['EMA_Fast'].diff(1) / df_calc['EMA_Fast'].shift(1) * 100
 
@@ -120,6 +122,7 @@ if st.session_state.get("force_calculation", True):
     st.session_state.current_volatility = df_calc['Volatility_SD'].fillna(0.0).iloc[-1]
     st.session_state.fast_ema_slope = df_calc['EMA_Fast_Slope'].fillna(0.0).iloc[-1]
     st.session_state.force_calculation = False
+
 
 current_p = st.session_state.current_p
 emaFast_p = st.session_state.emaFast_p
